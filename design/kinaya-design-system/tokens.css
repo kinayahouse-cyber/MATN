@@ -1,0 +1,165 @@
+/* Kinaya OS — design tokens
+   Dark cinematic is the primary mode. Light "atelier" mode is secondary.
+   Linear system: blocks are defined by closed hairline frames, never by filled surfaces.
+   Vermillion is reserved for primary action, active state and the "today" marker. */
+
+:root {
+  /* Backgrounds */
+  --bg-base: #141715;
+  --bg-surface: #1C1F1D;
+  --bg-elevated: #252825;
+  --bg-sunken: #0F110F;
+
+  /* Foregrounds */
+  --fg-primary: #F2EFE9;
+  --fg-secondary: #A8A49B;
+  --fg-muted: #6E6B64;
+
+  /* Borders — hierarchy comes from line weight/contrast, not fill */
+  --border: #2E312E;
+  --border-strong: #3D423D;
+  --border-warm: #4A3A2E; /* concepts / creative zones */
+
+  /* Accent — action + "today" only */
+  --accent: #E8552A;
+  --accent-hover: #FF6A3D;
+  --accent-muted: rgba(232, 85, 42, 0.14);
+  --accent-ring: rgba(232, 85, 42, 0.18);
+  --accent-fg: #1A1300;
+
+  /* States (muted) */
+  --state-paid: #6B8F5E;
+  --state-due: #C9922E;
+  --state-late: #B4472E;
+  --state-paid-bg: rgba(107, 143, 94, 0.16);
+  --state-due-bg: rgba(201, 146, 46, 0.16);
+  --state-late-bg: rgba(180, 71, 46, 0.16);
+  --state-neutral-bg: rgba(168, 164, 155, 0.12);
+
+  /* Divisions — muted tints, one per division (never per project) */
+  --div-studio: #5C7A8A;
+  --div-atelier: #8A8455;
+  --div-label: #8A5C74;
+  --div-general: #5F7A66;
+  --div-studio-faint: rgba(92, 122, 138, 0.22);
+  --div-atelier-faint: rgba(138, 132, 85, 0.22);
+  --div-label-faint: rgba(138, 92, 116, 0.22);
+  --div-general-faint: rgba(95, 122, 102, 0.22);
+
+  /* Typography — Spectral speaks, Archivo counts */
+  --font-serif: 'Spectral', Georgia, serif;
+  --font-sans: 'Archivo', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-48: 48px;
+  --text-32: 32px;
+  --text-24: 24px;
+  --text-18: 18px;
+  --text-15: 15px; /* body */
+  --text-13: 13px; /* data */
+  --text-11: 11px; /* labels, column headers */
+
+  --leading-serif: 1.45;
+  --leading-sans: 1.35;
+  --tracking-tight: -0.01em; /* large Archivo titles */
+  --tracking-label: 0.04em;  /* uppercase column headers */
+
+  /* Geometry — 4px grid */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --row-height: 40px;
+}
+
+[data-theme="light"] {
+  --bg-base: #F2EFE9;
+  --bg-surface: #FBFAF6;
+  --bg-elevated: #F0ECE3;
+  --bg-sunken: #E8E3D8;
+
+  --fg-primary: #1A1D1A;
+  --fg-secondary: #5A574F;
+  --fg-muted: #8A867C;
+
+  --border: #DAD5C8;
+  --border-strong: #C4BEAC;
+  --border-warm: #C9A688;
+
+  --accent: #D6491F;
+  --accent-hover: #B03A18;
+  --accent-muted: rgba(214, 73, 31, 0.12);
+  --accent-ring: rgba(214, 73, 31, 0.20);
+  --accent-fg: #FBFAF6;
+}
+
+/* Base primitives ---------------------------------------------------------- */
+
+.k-frame {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+.k-frame--sm { border-radius: var(--radius-md); }
+.k-frame--warm { border-color: var(--border-warm); }
+
+.k-btn {
+  font-family: var(--font-sans);
+  font-size: var(--text-13);
+  border-radius: var(--radius-pill);
+  padding: 11px 22px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.k-btn--primary { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.k-btn--primary:hover { background: var(--accent-hover); }
+.k-btn--secondary { background: transparent; color: var(--fg-primary); border-color: var(--border-strong); font-weight: 500; }
+.k-btn--secondary:hover { border-color: var(--fg-secondary); }
+.k-btn--ghost { background: transparent; color: var(--fg-secondary); padding: 11px 16px; font-weight: 500; }
+.k-btn--ghost:hover { color: var(--fg-primary); }
+
+.k-field {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--fg-primary);
+  outline: none;
+}
+.k-field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+
+.k-badge {
+  font-family: var(--font-sans);
+  font-size: var(--text-11);
+  padding: 3px 11px;
+  border-radius: var(--radius-pill);
+}
+.k-badge--paid { background: var(--state-paid-bg); color: var(--state-paid); }
+.k-badge--due { background: var(--state-due-bg); color: var(--state-due); }
+.k-badge--late { background: var(--state-late-bg); color: var(--state-late); }
+.k-badge--neutral { background: var(--state-neutral-bg); color: var(--fg-secondary); }
+/* Division badges are filled — one of the three intentional exceptions */
+.k-badge--division { color: var(--bg-base); font-weight: 600; }
+
+.k-th {
+  font-family: var(--font-sans);
+  font-size: var(--text-11);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--fg-secondary);
+}
+.k-td-num { font-variant-numeric: tabular-nums; text-align: right; }
+.k-code { font-family: var(--font-mono); font-size: 12px; color: var(--fg-muted); }
+
+/* Radial signature — phenakistoscope disc. Set --k-pct and --k-color. */
+.k-radial {
+  border-radius: var(--radius-pill);
+  background:
+    conic-gradient(var(--k-color, var(--accent)) 0deg calc(var(--k-pct, 68) * 3.6deg), transparent calc(var(--k-pct, 68) * 3.6deg) 360deg),
+    repeating-conic-gradient(from 0deg, var(--border-strong) 0deg 4deg, transparent 4deg 18deg),
+    var(--bg-elevated);
+}
+.k-radial--spin { animation: k-spin 1.6s linear infinite; }
+@keyframes k-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
