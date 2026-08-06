@@ -44,9 +44,9 @@ Porté par toute entité rattachée à un client ou un projet (Client, Projet, D
 
 **Relations** : rattaché à un Client, porte plusieurs Documents, génère des Décisions et des Notes.
 
-**Cycle de vie** : Prospection → Devis envoyé → Signé → En cours → Livré → Clos. Statut "Abandonné" possible depuis n'importe quelle étape avant Signé.
+**Cycle de vie** : Devis envoyé → Signé → En cours → Livré → Clos. Statut "Abandonné" possible depuis n'importe quelle étape avant Signé. La phase amont (prospection, avant devis) est portée par l'entité Opportunité, module CRM (Post-MVP) — un Projet, au sens de cette ontologie, existe à partir de l'émission d'un devis.
 
-**Règles métier** : un Projet hérite du Track de son Client au moment de la création et ne peut pas en changer en cours de route.
+**Règles métier** : un Projet hérite du Track de son Client au moment de la création et ne peut pas en changer en cours de route. Un Projet de Track Label suit exactement la même structure que tout autre Projet — aucune entité distincte pour le monde Label.
 
 ## 5. Document — MVP
 

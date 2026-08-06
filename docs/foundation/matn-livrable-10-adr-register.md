@@ -105,4 +105,32 @@
 
 ---
 
+---
+
+## ADR-006 — Réconciliation de l'implémentation existante (audit du 06/08)
+
+**Contexte** : l'audit de réconciliation (`docs/foundation/audit-reconciliation.md`) confronte les 15 entités Prisma existantes à l'ontologie (Livrable 03) et à l'exigence de cloisonnement Track (Livrables 04, 06). Il confirme trois lacunes structurelles (entité Décision absente, Track filtrable uniquement sur Projet, monde Label dupliqué via ProductionLabel) et soulève cinq points de modélisation nécessitant un arbitrage avant toute migration.
+
+**Problème** : cinq décisions de modélisation devaient être prises avant que Claude Code puisse migrer le schéma — fusionner ou non Opportunite et ProductionLabel dans Projet, statut de Division.GENERALITES, généricité de Devis, cardinalité Contact↔Organisation.
+
+**Décisions retenues** :
+
+1. **Opportunite reste une entité séparée**, hors périmètre MVP (module CRM, Post-MVP — PRD section 6.3). Le cycle de vie du Projet (Livrable 03, section 4) est corrigé pour démarrer à *Devis envoyé* — la prospection amont vit dans Opportunite, pas dans Projet.
+2. **ProductionLabel fusionne dans Projet** (Track=Label). Asset et SectionDossier deviennent respectivement Actif Créatif et Document, rattachés à ce Projet.
+3. **Division.GENERALITES devient un Track nul**, conforme au mécanisme de connaissance transverse déjà défini (Livrable 06, §7) — pas une quatrième valeur d'énumération.
+4. **Devis migre vers l'entité Document générique** déjà spécifiée dans l'ontologie (types devis/contrat/guideline/livrable/compte-rendu). Le système d'avenants devient le mécanisme de version générique de Document.
+5. **Contact.organisationId devient nullable**, et une relation directe Contact↔Projet est ajoutée.
+
+**Justification** : dans chaque cas, soit l'implémentation antérieure divergeait d'un choix déjà motivé dans l'ontologie (4, 5), soit elle dupliquait une structure que les principes de simplicité et de non-duplication interdisent (2, 3), soit elle correspondait à un objet métier réellement distinct que l'ontologie n'avait pas explicitement positionné (1).
+
+**Conséquences** :
+- Le Business Ontology (Livrable 03, section 4) est corrigé.
+- L'entité Décision reste la priorité absolue d'implémentation à l'ouverture du build (règle confirmée, pas modifiée).
+- Le champ `track` doit être ajouté à Organisation et à Document (ex-Devis), et propagé au monde Label fusionné — périmètre de la prochaine migration.
+- Questions 01 et 02 du Livrable 12 sont résolues et retirées du registre.
+
+**Alternatives futures** : si le volume d'opportunités commerciales croît significativement avant l'arrivée du module CRM complet, réévaluer un stockage minimal d'Opportunite dans MATN plutôt que de dépendre d'un outil externe.
+
+---
+
 *MATN · ADR Register · Livrable 10 · Claude Strategist*
