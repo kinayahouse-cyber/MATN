@@ -133,4 +133,30 @@
 
 ---
 
+## ADR-007 — Résolution des décisions ouvertes du plan de migration ADR-006
+
+**Contexte** : la déclinaison d'ADR-006 en plan de migration concret (`docs/foundation/plan-migration-adr006.md`) a fait apparaître 7 décisions produit non couvertes par ADR-006, bloquantes pour toute exécution — statut `REFUSE` sans équivalent, conflation `budgetAlloue`/`budget`, champs `format`/`statutDiffusion` sans destination, mapping `TypeSectionDossier → TypeDocument`, pré-peuplement de la relation Contact↔Projet, sémantique du champ `palier`, et résolution des Organisations à Track multiple détectées au backfill.
+
+**Problème** : sept points de modélisation devaient être tranchés avant que le plan de migration puisse être considéré comme exécutable.
+
+**Décisions retenues** :
+
+1. **Statut `REFUSE`** devient un 5ᵉ statut de `StatutDocument`, terminal au même titre que `SIGNE` — amende le cycle de vie à 4 statuts initialement décrit dans l'ontologie (Livrable 03, §5).
+2. **`budgetAlloue`/`budget`** : deux champs distincts sur `Projet` (`budget` = plafond facturable, `budgetInterne` = enveloppe d'investissement) — pas de fusion dans un seul champ.
+3. **`format`/`statutDiffusion`** : conservés dans un champ de métadonnées libres temporaire sur `Projet`, en attendant une décision de destination définitive.
+4. **Mapping `TypeSectionDossier → TypeDocument`** : confirmé tel que proposé dans le plan de migration — `LIVRABLE` par défaut, type d'origine conservé en référence.
+5. **Relation Contact↔Projet** : confirmée vide au départ, peuplée au fil de l'eau — pas de pré-peuplement automatique.
+6. **Champ `Palier` (P0–P4)** : retiré du périmètre de cette migration, faute de définition sémantique documentée dans les livrables existants. À reprendre dans une migration de suivi une fois cette définition clarifiée avec le produit.
+7. **Organisations à Track multiple** (anomalies de backfill) : plan existant conservé (NULL + journalisation + arbitrage manuel avant passage en `NOT NULL`) — précision ajoutée : ce NULL transitoire est distinct par nature du NULL permanent que portent les connaissances stratégiques transverses (Livrable 06, §7).
+
+**Justification** : dans chaque cas, soit un champ dédié préserve une nuance métier réelle que la fusion aurait effacée (2, 3), soit le plan initial était déjà la meilleure option et ne faisait que manquer une validation explicite (4, 5, 7), soit la donnée manquante pour trancher correctement (sémantique de `palier`) justifie de sortir le point du périmètre plutôt que de figer un schéma sur une hypothèse (6), soit le statut manquant se résout le plus simplement en complétant l'énumération plutôt qu'en la contournant (1).
+
+**Conséquences** :
+- Le plan de migration (`docs/foundation/plan-migration-adr006.md`) est mis à jour en conséquence : `StatutDocument` gagne `REFUSE`, `Projet` gagne `budgetInterne` et un champ de métadonnées temporaire, le §7 (`palier`) est marqué hors scope.
+- Aucune des 7 décisions ne lève l'exigence de validation avant exécution — le plan reste non exécuté et non mergé sur `main` tant qu'une autorisation d'exécution distincte n'est pas donnée.
+
+**Alternatives futures** : réintégrer `palier` dans une migration de suivi une fois sa sémantique définie ; réévaluer si `budgetInterne` doit fusionner avec `budget` si l'usage démontre que la distinction n'apporte pas de valeur ; réévaluer le champ de métadonnées temporaire (`format`/`statutDiffusion`) à la prochaine revue de schéma, avec une échéance de nettoyage à fixer à l'exécution.
+
+---
+
 *MATN · ADR Register · Livrable 10 · Claude Strategist*

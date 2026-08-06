@@ -2,11 +2,11 @@
 
 > MATN Phase 2, étape 1 · Plan de migration uniquement — **aucun schéma modifié, aucune migration exécutée**.
 >
-> Sources : `docs/foundation/matn-livrable-10-adr-register.md` (ADR-006), `docs/foundation/audit-reconciliation.md`, `docs/foundation/matn-livrable-03-business-ontology.md`, `docs/foundation/matn-livrable-06-knowledge-architecture.md`.
+> Sources : `docs/foundation/matn-livrable-10-adr-register.md` (ADR-006, ADR-007), `docs/foundation/audit-reconciliation.md`, `docs/foundation/matn-livrable-03-business-ontology.md`, `docs/foundation/matn-livrable-06-knowledge-architecture.md`.
 >
 > Base : `prisma/schema.prisma` tel qu'il existait au dernier commit applicatif (`8257030`), récupéré depuis l'historique git — c'est le schéma de référence pour tous les mappings champ par champ ci-dessous.
 
-Ce document couvre, dans l'ordre demandé, les 7 chantiers de migration issus d'ADR-006. Pour chacun : schéma cible, script de migration proposé (sketch, non exécuté), stratégie de backfill, risques.
+Ce document couvre, dans l'ordre demandé, les chantiers de migration issus d'ADR-006. Pour chacun : schéma cible, script de migration proposé (sketch, non exécuté), stratégie de backfill, risques. Les 7 décisions produit qui bloquaient l'exécution ont été tranchées par **ADR-007** — intégrées ci-dessous ; le champ `palier` (§7) sort du périmètre de cette migration suite à cet arbitrage (voir §7 et « Décisions produit » en fin de document).
 
 **Note sur l'ordre** : l'ordre ci-dessous est l'ordre de priorité produit (Décision d'abord). L'ordre d'**exécution technique** diffère par endroits à cause de dépendances de données — voir « Ordre d'exécution recommandé » en fin de document.
 
@@ -141,6 +141,8 @@ Pour `Organisation.track`, aucune donnée directe n'existe (le champ n'a jamais 
 3. Si l'Organisation n'a aucun `Projet` mais a des `Opportunite.divisionPressentie` cohérentes → backfill à cette valeur, en la marquant comme signal faible (pressenti, non confirmé) dans le rapport de migration.
 4. Sinon → `NULL`, assignation manuelle requise.
 
+**Précision (ADR-007)** : le `NULL` issu du cas 2 ci-dessus est **transitoire** — il doit être résolu par un arbitrage manuel avant de pouvoir imposer `NOT NULL` sur `Organisation.track`. Il est de nature différente du `NULL` **permanent** que portent les connaissances stratégiques transverses (`Decision`/`Note`, Livrable 06 §7), qui n'est jamais destiné à être résolu. Les deux partagent le même type de colonne (`Track?`), mais ne doivent pas être confondus dans l'interprétation opérationnelle — le plan de résolution (journalisation + arbitrage manuel) reste inchangé, cette précision ne fait qu'expliciter sa portée.
+
 **`Organisation.track` reste nullable après cette migration.** Le passage en `NOT NULL` est une migration de suivi distincte, déclenchée seulement une fois toutes les anomalies de l'étape 2 résolues — ne pas le faire dans la même migration pour ne pas bloquer le reste du plan sur un arbitrage produit.
 
 Pour la dénormalisation de `track` sur Document (ex-Devis) : voir §4, dépendance explicite sur cette étape (le Projet doit avoir son `track` renseigné avant de pouvoir le copier sur ses Documents).
@@ -164,10 +166,10 @@ C'est le chantier le plus risqué du plan : fusion d'entité avec mappings parti
 | `id` | nouvel `id` Projet (cuid généré) | Nécessite une table de correspondance temporaire `ancien_id → nouvel_id` pour réécrire les FK des enfants |
 | `code` (`KIN-26-L-XXX`) | `code` | **Risque de collision** — voir Risques |
 | `titre` | `nom` | Direct |
-| `format` | *(aucune destination)* | **Perte sèche** si non traité — voir Risques |
-| `budgetAlloue` | `budget` | **Conflation sémantique** — voir Risques |
+| `format` | `metadonneesMigration` (champ JSON temporaire) | Conservé, pas de perte — ADR-007 |
+| `budgetAlloue` | `budgetInterne` (nouveau champ dédié) | Direct, pas de fusion avec `budget` — ADR-007 |
 | `stadeProduction` | `stade` | Mapping de valeurs approximatif — voir table ci-dessous |
-| `statutDiffusion` | *(aucune destination)* | **Perte sèche** si non traité — voir Risques |
+| `statutDiffusion` | `metadonneesMigration` (champ JSON temporaire) | Conservé, pas de perte — ADR-007 |
 | `sections` (SectionDossier) | Document rattachés au Projet résultant | Voir §4 |
 | `assets` (Asset) | Actif Créatif rattaché au Projet résultant | Table `Asset` conservée telle quelle dans un premier temps, FK repointée (voir Risques) |
 | `taches` (Tache) | `Tache.projetId` (au lieu de `productionLabelId`) | Direct, mécanique |
@@ -175,6 +177,21 @@ C'est le chantier le plus risqué du plan : fusion d'entité avec mappings parti
 | — | `track` | `LABEL` pour toutes les lignes fusionnées |
 | — | `organisationId` | `NULL` — aucune Organisation cliente n'existait côté ProductionLabel. Reste une exception à la règle « un Projet est rattaché à un Client » (déjà notée dans l'audit, non résolue par ADR-006). |
 | — | `engagement` | `NULL` — aucune valeur de l'enum `Engagement` actuel ne correspond au monde Label ; à trancher séparément (hors scope ADR-006) |
+
+**Champs ajoutés à `Projet` pour cette fusion (ADR-007)** :
+
+```prisma
+model Projet {
+  // ... champs existants, plus track (§2) ...
+  budgetInterne        Decimal? @db.Decimal(14, 2)
+  // enveloppe d'investissement interne, non facturable — distinct de `budget` (plafond facturable
+  // suivi contre devis/factures). Alimenté uniquement pour les Projets issus de la fusion Label.
+
+  metadonneesMigration Json?
+  // champ temporaire : préserve `format` et `statutDiffusion` de l'ancien ProductionLabel le temps
+  // d'une revue produit. Pas de date de suppression fixée dans ce plan — voir Risques.
+}
+```
 
 **Mapping `stadeProduction → stade`** :
 
@@ -202,6 +219,8 @@ JOIN projets p ON p.code = pl.code;
 
 -- 3. Création des nouveaux Projet + remplissage de la table de correspondance
 -- (fait applicativement plutôt qu'en SQL pur, pour générer des cuid côté Prisma)
+-- budget_interne <- production_label.budget_alloue (champ dédié, pas de fusion avec budget)
+-- metadonnees_migration <- jsonb_build_object('format', format, 'statutDiffusion', statut_diffusion)
 
 -- 4. Repointage des enfants
 UPDATE taches   t SET projet_id = m.new_id, production_label_id = NULL
@@ -223,8 +242,8 @@ Il ne s'agit pas d'un backfill au sens classique (pas de nouvelle colonne à peu
 ### Risques
 
 - **Collision de code** : `CLAUDE.md` (ancien) indique que `ProductionLabel.code` suit « une séquence propre » — indépendante de celle de `Projet` — alors que les deux utilisent le même format `KIN-26-L-XXX`. Une collision entre un `Projet` Studio/Atelier/Label existant et une `ProductionLabel` fusionnée est plausible et bloquerait la contrainte d'unicité sur `code`. **À vérifier avant toute exécution**, avec une stratégie de renommage déterministe si des collisions sont trouvées.
-- **`budgetAlloue` vs `budget`** : conflation de deux notions différentes — `budget` (Projet) est un plafond facturable suivi contre devis/factures, `budgetAlloue` (ProductionLabel) est une enveloppe d'investissement interne, non facturable. Les fusionner dans le même champ sans distinction fait perdre cette nuance. Non tranché par ADR-006 — à signaler explicitement comme décision produit encore ouverte, pas seulement un détail technique.
-- **`format` et `statutDiffusion`** : aucune destination dans `Projet`. Deux options : (a) accepter la perte, documentée ; (b) les préserver temporairement dans un champ `notes`/métadonnées non structuré le temps d'une revue. Recommandation : (b), au moins pour un cycle de release, plutôt qu'une perte silencieuse.
+- **`budgetAlloue` vs `budget`** — résolu par ADR-007 : `budgetInterne` devient un champ dédié sur `Projet`, distinct de `budget`. Plus de conflation. Risque résiduel : rien n'empêche au niveau du schéma qu'un futur devis/facture référence par erreur `budgetInterne` au lieu de `budget` — distinction à faire respecter par la Couche Logique Métier, pas par une contrainte SQL.
+- **`format` et `statutDiffusion`** — résolus par ADR-007 : préservés dans `metadonneesMigration` (JSON), un champ explicitement temporaire. Risque résiduel : ce plan ne fixe **aucune échéance** de nettoyage — un champ « temporaire » sans date de revue devient facilement permanent par défaut. À corriger au moment de l'exécution réelle (fixer un jalon ou un ticket de suivi), pas seulement le documenter comme temporaire ici.
 - **Dépendance à l'entité Actif Créatif** (pour `Asset`) et à la fusion `SectionDossier → Document` (§4) : ce chantier n'est réellement terminé que si ces deux dépendances sont elles-mêmes exécutées dans la même fenêtre de migration — sinon des `Asset`/`SectionDossier` orphelins subsistent après le `DROP TABLE productions_label`.
 - C'est la migration la plus difficile à annuler proprement (fusion, pas simple ajout de colonne) : **recommandation forte** de l'exécuter d'abord en mode dry-run (génération du rapport de réconciliation sans écriture), avec sauvegarde complète de la base avant toute exécution réelle.
 
@@ -248,6 +267,7 @@ enum StatutDocument {
   VALIDE
   ENVOYE
   SIGNE
+  REFUSE   // 5e statut, ajouté par ADR-007 — terminal, au même titre que SIGNE
 }
 
 model Document {
@@ -289,6 +309,8 @@ model LigneDocument {
 
 Contrainte d'unicité sur `numero` : à passer en index unique **partiel** (`WHERE numero IS NOT NULL`) plutôt qu'une contrainte unique classique, puisque les types hors devis n'auront généralement pas de numéro.
 
+`SIGNE` et `REFUSE` sont tous deux des statuts **terminaux** (ADR-007) : un Document dans l'un ou l'autre de ces états n'est pas censé transitionner à nouveau. Comme pour l'immutabilité de `Decision` (§1), rien n'impose mécaniquement cette règle au niveau du schéma — elle reste une règle de la future Couche Logique Métier, pas une contrainte SQL.
+
 ### Mapping des statuts
 
 | `StatutDevis` | `StatutDocument` cible | Note |
@@ -296,14 +318,13 @@ Contrainte d'unicité sur `numero` : à passer en index unique **partiel** (`WHE
 | `BROUILLON` | `BROUILLON` | Direct |
 | `ENVOYE` | `ENVOYE` | Direct |
 | `ACCEPTE` | `SIGNE` | Rapprochement sémantique (audit §1) |
-| `REFUSE` | **Aucun équivalent** | Voir Risques — décision produit requise avant exécution |
+| `REFUSE` | `REFUSE` | Direct — 5e statut ajouté par ADR-007, terminal comme `SIGNE` |
 
 ### Script de migration proposé
 
 ```sql
 CREATE TYPE "TypeDocument" AS ENUM ('DEVIS','CONTRAT','GUIDELINE','LIVRABLE','COMPTE_RENDU');
-CREATE TYPE "StatutDocument" AS ENUM ('BROUILLON','VALIDE','ENVOYE','SIGNE');
--- (+ REFUSE / REJETE si la décision du point "Risques" ci-dessous retient l'option d'extension d'enum)
+CREATE TYPE "StatutDocument" AS ENUM ('BROUILLON','VALIDE','ENVOYE','SIGNE','REFUSE');
 
 CREATE TABLE documents ( ... );
 CREATE UNIQUE INDEX documents_numero_unique ON documents(numero) WHERE numero IS NOT NULL;
@@ -316,7 +337,7 @@ SELECT id, projet_id, 'DEVIS', numero,
     WHEN 'BROUILLON' THEN 'BROUILLON'
     WHEN 'ENVOYE' THEN 'ENVOYE'
     WHEN 'ACCEPTE' THEN 'SIGNE'
-    WHEN 'REFUSE' THEN /* à trancher */
+    WHEN 'REFUSE' THEN 'REFUSE'
   END,
   (SELECT track FROM projets WHERE projets.id = devis.projet_id),  -- dénormalisation, dépend de §2
   avenant_de_id, created_at, updated_at
@@ -333,17 +354,13 @@ DROP TABLE devis;
 
 Mécanique pour tout sauf le statut `REFUSE` : copie directe des lignes `Devis`/`LigneDevis` vers `Document`/`LigneDocument`, `type = DEVIS` pour toutes les lignes migrées. Le `track` est copié depuis le `Projet` parent — **dépendance explicite** : cette migration doit s'exécuter après que §2 (Track sur Projet) et §3 (fusion Label, pour que les Documents issus de `SectionDossier` aient aussi un Projet/track valides) soient terminés.
 
-`SectionDossier → Document` (mentionné en §3) suit le même mécanisme, avec `type` à déterminer par un mapping `TypeSectionDossier → TypeDocument` (aucun des deux ne se recouvre parfaitement : `NOTE_INTENTION/PITCH/REFERENCES/TRAITEMENT/SCRIPT` n'ont pas d'équivalent direct dans `DEVIS/CONTRAT/GUIDELINE/LIVRABLE/COMPTE_RENDU`). Recommandation : mapper l'ensemble vers `LIVRABLE` par défaut (le plus proche conceptuellement d'un contenu créatif versionné), en conservant le `type` d'origine dans un champ `notes`/titre pour ne pas perdre l'information — **à valider**, ce mapping n'est pas couvert par ADR-006 et mérite un arbitrage produit séparé.
+`SectionDossier → Document` (mentionné en §3) suit le même mécanisme, avec `type` à déterminer par un mapping `TypeSectionDossier → TypeDocument` (aucun des deux ne se recouvre parfaitement : `NOTE_INTENTION/PITCH/REFERENCES/TRAITEMENT/SCRIPT` n'ont pas d'équivalent direct dans `DEVIS/CONTRAT/GUIDELINE/LIVRABLE/COMPTE_RENDU`). **Confirmé par ADR-007** : mapper l'ensemble vers `LIVRABLE` par défaut (le plus proche conceptuellement d'un contenu créatif versionné), en conservant le `type` d'origine dans un champ `notes`/titre pour ne pas perdre l'information — plan inchangé, décision actée.
 
 ### Risques
 
-- **`REFUSE` sans équivalent ontologique** — signalé dans l'audit, non résolu par ADR-006. Trois options, aucune tranchée :
-  a) Mapper vers `BROUILLON` + note « refusé » (perd l'information de refus dans le statut structuré) ;
-  b) Étendre `StatutDocument` avec une 5ᵉ valeur (`REFUSE`/`REJETE`), au-delà des 4 statuts de l'ontologie — nécessite un amendement du Livrable 03 ;
-  c) Garder `ENVOYE` + un booléen `refuse: Boolean` séparé.
-  **Ce point doit être tranché avant exécution** — il conditionne le schéma cible ci-dessus (option b y est esquissée mais pas actée).
+- **`REFUSE`** — résolu par ADR-007 (5ᵉ statut, option b de la version précédente de ce plan, désormais actée). Cela amende le cycle de vie à 4 statuts initialement décrit dans l'ontologie (Livrable 03, §5) — l'amendement vit dans ADR-007, le Livrable 03 lui-même n'a pas été mis à jour à ce stade. Risque résiduel : tout endroit du futur code applicatif qui supposerait exactement 4 statuts (validations, transitions d'état codées en dur) devra tenir compte du 5ᵉ.
 - Renommage `Devis → Document` et `LigneDevis → LigneDocument` : casse potentiellement des exports ou intégrations existants (l'ancien `CLAUDE.md` mentionne un export Excel générique par base) — audit du code applicatif nécessaire, hors scope de ce plan de schéma.
-- Le mapping `SectionDossier → Document` (type `LIVRABLE` par défaut) est une approximation non validée par ADR-006 — à confirmer séparément avant exécution de cette portion.
+- Le mapping `SectionDossier → Document` (type `LIVRABLE` par défaut) est confirmé par ADR-007 — risque résiduel faible : le `type` d'origine (`NOTE_INTENTION`/`PITCH`/etc.) n'est conservé qu'en référence libre (notes/titre), pas dans un champ structuré filtrable ; une requête voulant isoler les anciens `PITCH` par exemple devra parser ce texte plutôt que filtrer une colonne typée.
 
 ---
 
@@ -397,7 +414,7 @@ CREATE UNIQUE INDEX "_ContactProjets_AB_unique" ON "_ContactProjets"("A", "B");
 ### Stratégie de backfill
 
 - `organisationId` : aucun backfill nécessaire — toutes les lignes existantes ont déjà cette valeur renseignée, la migration ne fait que relâcher la contrainte `NOT NULL`.
-- Relation `Contact↔Projet` : table de jointure **vide au départ**, car cette relation n'a jamais existé. **Décision ouverte, non couverte par ADR-006** : faut-il pré-peupler cette relation automatiquement (ex. lier chaque Contact à tous les Projets de son Organisation), ou la laisser vide et ne la peupler qu'au fil de l'eau à partir de la mise en service ? Recommandation par défaut : la laisser vide (un pré-peuplement automatique introduirait des liens qui n'ont jamais été confirmés par un humain) — mais signaler explicitement ce choix avant exécution.
+- Relation `Contact↔Projet` : table de jointure **vide au départ**, car cette relation n'a jamais existé. **Confirmé par ADR-007** : pas de pré-peuplement automatique (ex. lier chaque Contact à tous les Projets de son Organisation) — la relation reste vide et se peuple au fil de l'eau à partir de la mise en service. Plan inchangé, décision actée.
 
 ### Risques
 
@@ -454,40 +471,11 @@ Aucune : `clientId` et `tag` sont de nouveaux champs nullables, toutes les ligne
 
 ---
 
-## 7. Projet : ajout du champ `palier`
+## 7. Projet : champ `palier` — hors scope de cette migration
 
-### Schéma cible
+**Retiré du périmètre par ADR-007** (décision 6). Motif : la sémantique de `Palier` (P0–P4) n'est documentée nulle part dans les livrables consultés — ni sa définition, ni ce qui distingue un palier d'un autre pour un Projet (l'ancien `CLAUDE.md` le listait comme hook réservé, « Palier (P0–P4)… ne pas implémenter », sans détail ; le seul autre usage du mot « palier » dans `docs/foundation/` désigne un concept sans rapport, les étapes de développement de l'app nodale IA). Plutôt que de figer un schéma (enum ordinal simple) sur une hypothèse de structure non validée par le produit, ce chantier sort du périmètre de cette migration.
 
-```prisma
-enum Palier {
-  P0
-  P1
-  P2
-  P3
-  P4
-}
-
-model Projet {
-  // ...
-  palier Palier?
-}
-```
-
-### Script de migration proposé
-
-```sql
-CREATE TYPE "Palier" AS ENUM ('P0','P1','P2','P3','P4');
-ALTER TABLE projets ADD COLUMN palier "Palier";
-```
-
-### Stratégie de backfill
-
-**Aucune possible.** Le champ `palier` n'a jamais existé sous quelque forme que ce soit dans l'ancien schéma — l'ancien `CLAUDE.md` le listait comme hook réservé (« Palier (P0–P4)… ne pas implémenter »), sans en documenter la sémantique exacte (ce qui distingue P0 de P4 n'est précisé nulle part dans les livrables consultés — le seul autre usage du mot « palier » dans `docs/foundation/` désigne un concept différent, les étapes de développement de l'app nodale IA, sans lien avec cette propriété de Projet). Toutes les lignes `Projet` existantes recevront `palier = NULL` ; aucune reconstitution rétroactive n'est possible sans re-classification manuelle par un humain.
-
-### Risques
-
-- **Sémantique non documentée** : avant d'exécuter cette migration, la définition de ce qui distingue P0/P1/P2/P3/P4 pour un Projet doit être clarifiée avec le produit — le schéma ci-dessus (simple enum ordinal) est une hypothèse de structure, pas une validation du sens métier.
-- Risque de perte de données : nul (nouvelle colonne nullable).
+Aucun schéma cible, script ou stratégie de backfill n'est proposé ici tant que cette sémantique n'est pas clarifiée. Ce chantier sera repris dans une migration de suivi une fois la définition obtenue — le hook reste noté comme réservé, pas abandonné.
 
 ---
 
@@ -497,28 +485,29 @@ L'ordre de priorité produit (1→7 ci-dessus) n'est pas directement l'ordre d'e
 
 1. **§2 (Track)** doit s'exécuter avant §3 et §4, car §3 assigne `track = LABEL` et §4 dénormalise `track` depuis `Projet`.
 2. **§3 (fusion ProductionLabel → Projet)** doit s'exécuter avant la portion « SectionDossier → Document » de §4, puisque ces Documents ont besoin d'un `projetId` valide issu de la fusion.
-3. **§1 (Décision), §5 (Contact), §6 (Note), §7 (palier)** sont indépendants entre eux et des trois précédents — exécutables à tout moment, y compris en parallèle.
+3. **§1 (Décision), §5 (Contact), §6 (Note)** sont indépendants entre eux et des chantiers précédents — exécutables à tout moment, y compris en parallèle.
 4. **§4 (Devis → Document)**, hors portion SectionDossier, ne dépend que de §2.
+5. **§7 (palier)** est hors périmètre de cette migration (ADR-007) — ne figure plus dans l'ordre d'exécution.
 
-Ordre technique proposé : **§2 → §3 → §4 → {§1, §5, §6, §7 en parallèle}**.
+Ordre technique proposé : **§2 → §3 → §4 → {§1, §5, §6 en parallèle}**.
 
 Chaque étape nécessite une sauvegarde complète de la base avant exécution, et §3 en particulier nécessite un rapport de réconciliation validé manuellement avant toute suppression de table.
 
 ---
 
-## Décisions produit encore ouvertes (bloquantes pour l'exécution)
+## Décisions produit — résolues par ADR-007
 
-Ce plan ne peut pas être exécuté tel quel — les points suivants nécessitent un arbitrage avant migration :
+Les 7 décisions qui bloquaient l'exécution de ce plan ont été tranchées par **ADR-007** (`docs/foundation/matn-livrable-10-adr-register.md`) :
 
-1. Statut `REFUSE` de `Devis` sans équivalent dans `StatutDocument` (§4).
-2. Conflation `budgetAlloue`/`budget` lors de la fusion `ProductionLabel → Projet` (§3).
-3. Devenir de `format` et `statutDiffusion` de `ProductionLabel`, sans destination dans `Projet` (§3).
-4. Mapping `TypeSectionDossier → TypeDocument` (§4), non couvert par ADR-006.
-5. Pré-peuplement ou non de la relation Contact↔Projet (§5).
-6. Sémantique exacte de `Palier` P0–P4 pour un Projet (§7).
-7. Stratégie de résolution des Organisations à Track multiple détectées au backfill (§2).
+1. Statut `REFUSE` de `Devis` → devient un 5ᵉ statut de `StatutDocument`, terminal comme `SIGNE` (§4).
+2. Conflation `budgetAlloue`/`budget` → deux champs distincts sur `Projet` (`budget`, `budgetInterne`), pas de fusion (§3).
+3. Devenir de `format`/`statutDiffusion` → champ `metadonneesMigration` (JSON), temporaire (§3).
+4. Mapping `TypeSectionDossier → TypeDocument` → confirmé tel que proposé : `LIVRABLE` par défaut, type d'origine conservé en référence (§4).
+5. Pré-peuplement de la relation Contact↔Projet → confirmé vide au départ, peuplée au fil de l'eau (§5).
+6. Sémantique de `Palier` P0–P4 → non documentée ; le champ est retiré du périmètre de cette migration (§7).
+7. Organisations à Track multiple → plan existant conservé ; précision ajoutée : le `NULL` transitoire (à résoudre avant `NOT NULL`) est distinct du `NULL` permanent des connaissances stratégiques transverses (§2).
 
-**Aucune exécution tant que ce plan n'est pas validé**, conformément à la demande.
+**Aucune exécution n'a eu lieu et ce plan n'est toujours pas mergé sur `main`.** La résolution de ces décisions lève le blocage de contenu du plan ; l'exécution reste soumise à une autorisation explicite distincte.
 
 ---
 
