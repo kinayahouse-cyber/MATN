@@ -40,7 +40,7 @@ Porté par toute entité rattachée à un client ou un projet (Client, Projet, D
 
 **Définition** : une mission commerciale délimitée, correspondant à un engagement de la grille tarifaire (Lecture, Identité, Film, Édition, Capsules & Content côté Studio ; AI, Motion/3D, Capsules, capacité hybride côté Atelier).
 
-**Propriétés clés** : type d'engagement, palier, Track, montant, statut, dates clés (signature, jalons, livraison).
+**Propriétés clés** : type d'engagement, Track, montant (plafond facturable, suivi contre devis/factures), montant interne (enveloppe d'investissement, optionnel — principalement Track Label, non facturable), statut, dates clés (signature, jalons, livraison). Le champ palier est différé jusqu'à définition de sa sémantique (Livrable 12, question ouverte).
 
 **Relations** : rattaché à un Client, porte plusieurs Documents, génère des Décisions et des Notes.
 
@@ -52,11 +52,11 @@ Porté par toute entité rattachée à un client ou un projet (Client, Projet, D
 
 **Définition** : tout artefact écrit rattaché à un Projet ou un Client — devis, contrat, guideline, livrable final, compte-rendu.
 
-**Propriétés clés** : type (devis / contrat / livrable / guideline / autre), version, statut (brouillon / validé / envoyé / signé).
+**Propriétés clés** : type (devis / contrat / livrable / guideline / autre), version, statut (brouillon / validé / envoyé / signé / refusé), métadonnées libres (optionnel — préserve les champs sans équivalent structuré lors d'une migration, ex. format, statut de diffusion).
 
 **Relations** : rattaché à un Projet et/ou un Client.
 
-**Cycle de vie** : Brouillon → Validé → Envoyé → (Signé si contractuel). Chaque nouvelle version remplace l'ancienne en tête, l'historique reste consultable.
+**Cycle de vie** : Brouillon → Validé → Envoyé → Signé ou Refusé (les deux sont terminaux). Chaque nouvelle version remplace l'ancienne en tête, l'historique reste consultable.
 
 ## 6. Décision — MVP
 

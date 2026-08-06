@@ -14,6 +14,7 @@
 | 04 | Une éventuelle commercialisation de MATN à d'autres agences change-t-elle des choix d'architecture pris maintenant pour Kinaya seule ? | Business | Basse | Risque de sur-ingénierie si traité trop tôt | Non traité avant la Phase 4 — délibérément écarté du cadrage actuel |
 | 05 | Comment la logique de décision de Hermes (ADR-001) sera-t-elle testée et validée, sachant qu'elle n'est pas une simple règle statique ? | IA | Moyenne | Conditionne la fiabilité de l'orchestration en Phase 3 | À traiter au moment de la conception détaillée de Hermes, en ouverture de Phase 3 |
 | 06 | Le module Creative Workflow (Business Process Maps, Livrable 07) et l'app nodale IA suivent des paliers séparés — à quel moment leurs données doivent-elles converger dans l'ontologie MATN ? | Produit | Basse | Risque de double capture de connaissance si non traité | À évaluer une fois l'app nodale IA au Palier 1 (génération image) |
+| 07 | Quelle est la sémantique exacte des paliers P0–P4 pour un Projet ? Jamais documentée, y compris à la conception initiale. | Produit | Moyenne | Le champ `palier` est retiré du périmètre de la migration en cours tant que non défini (ADR-007) | À définir par le fondateur avant réintroduction dans une prochaine migration |
 
 ---
 
