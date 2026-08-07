@@ -5,6 +5,8 @@
 > Sources : `docs/foundation/matn-livrable-10-adr-register.md` (ADR-006, ADR-007), `docs/foundation/audit-reconciliation.md`, `docs/foundation/matn-livrable-03-business-ontology.md`, `docs/foundation/matn-livrable-06-knowledge-architecture.md`.
 >
 > Base : `prisma/schema.prisma` tel qu'il existait au dernier commit applicatif (`8257030`), récupéré depuis l'historique git — c'est le schéma de référence pour tous les mappings champ par champ ci-dessous.
+>
+> **Mise à jour (07/08, voir `docs/foundation/dry-run-productionlabel.md`)** : confirmé par le fondateur, aucune donnée n'a jamais été chargée dans une base de production MATN. Les sections « stratégie de backfill » ci-dessous sont donc **sans objet** — il n'y a rien à migrer, seulement le schéma cible à créer directement (`CREATE TABLE`/`CREATE TYPE`). Elles restent dans ce document pour mémoire (elles redeviendraient pertinentes si des données réelles apparaissaient avant l'exécution), mais la prochaine étape réelle est la création directe du schéma cible, pas un dry-run de données.
 
 Ce document couvre, dans l'ordre demandé, les chantiers de migration issus d'ADR-006. Pour chacun : schéma cible, script de migration proposé (sketch, non exécuté), stratégie de backfill, risques. Les 7 décisions produit qui bloquaient l'exécution ont été tranchées par **ADR-007** — intégrées ci-dessous ; le champ `palier` (§7) sort du périmètre de cette migration suite à cet arbitrage (voir §7 et « Décisions produit » en fin de document).
 

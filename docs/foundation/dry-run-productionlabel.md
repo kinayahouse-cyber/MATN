@@ -2,7 +2,7 @@
 
 > MATN Phase 2, étape 1bis · Dry-run demandé en lecture seule contre la base de données actuelle.
 >
-> **Statut : non exécutable en l'état.** Ce document ne contient aucune donnée réelle ni aucun chiffre inventé — uniquement le constat de ce qui a été vérifié, et ce qui manque pour aller plus loin.
+> **Statut : non nécessaire — confirmé, pas seulement bloqué.** Confirmé par le fondateur (07/08) : aucune donnée n'a jamais été chargée dans une base de production MATN. L'hypothèse 3 ci-dessous est donc actée. Ce document ne contient aucune donnée réelle ni aucun chiffre inventé — uniquement le constat de ce qui a été vérifié.
 
 ## Ce qui était demandé
 
@@ -24,23 +24,23 @@ d. Comptage des Organisations à `Projet.track` (via `division`, pré-migration)
 
 Les points a, b, c, d sont **irréalisables contre cette base** — pas parce que les requêtes proposées seraient incorrectes (elles sont écrites contre le schéma reconstitué depuis `prisma/schema.prisma`, commit `8257030`), mais parce qu'il n'y a aucune donnée à interroger : la base ne contient pas — ou plus — le schéma applicatif de MATN.
 
-## Ce qui reste ouvert, et n'a délibérément pas été deviné
+## Ce qui a été envisagé, puis tranché
 
-Trois hypothèses sont possibles pour expliquer l'absence de ces tables, et rien dans les livrables consultés ne permet de trancher entre elles :
+Trois hypothèses avaient été posées pour expliquer l'absence de ces tables :
 
 1. Les données existent dans un **autre projet Supabase**, distinct de `scjpjpluanwuaulvtaxz`.
 2. Les données existent dans une **autre base Postgres** (l'ancien `CLAUDE.md` mentionnait Neon comme alternative envisagée à Supabase).
-3. Le schéma applicatif **n'a jamais été migré nulle part**, ou a été supprimé indépendamment de ce repo — auquel cas les 15 entités de l'audit de réconciliation (`docs/foundation/audit-reconciliation.md`) n'ont peut-être jamais existé que sous forme de code (le `schema.prisma` du commit `8257030`), sans base de données vivante correspondante.
+3. Le schéma applicatif **n'a jamais été migré nulle part**.
 
-Aucune de ces trois pistes n'est vérifiable depuis cette session sans information supplémentaire (identifiant d'un autre projet, autre chaîne de connexion). Ce rapport ne tranche pas entre elles.
+**Tranché (fondateur, 07/08) : hypothèse 3.** Aucune donnée n'a jamais été chargée dans une base de production MATN. Les 15 entités de l'audit de réconciliation (`docs/foundation/audit-reconciliation.md`) n'ont existé que sous forme de code (`prisma/schema.prisma`, commit `8257030`), jamais comme base de données vivante.
 
 ## Ce que ça change pour le plan de migration
 
-Si l'hypothèse 3 se confirme (aucune base vivante), `docs/foundation/plan-migration-adr006.md` reste valide comme **plan de schéma cible**, mais toute la partie « stratégie de backfill » de chacun de ses 7 chantiers devient sans objet — il n'y aurait rien à migrer, seulement un schéma à créer directement dans son état cible. C'est une différence structurante, pas un détail : à confirmer avant toute autre étape sur ce chantier.
+Confirmé : `docs/foundation/plan-migration-adr006.md` reste valide comme **plan de schéma cible**, mais toute la partie « stratégie de backfill » de chacun de ses 7 chantiers est **sans objet** — il n'y a rien à migrer, seulement un schéma à créer directement dans son état cible (`CREATE TABLE`/`CREATE TYPE`, pas d'`ALTER`/`UPDATE` sur des lignes existantes). Le dry-run demandé n'a donc plus de raison d'être : il n'existe aucune donnée sur laquelle détecter des collisions, des écarts budgétaires ou des anomalies de Track.
 
-## Requêtes préparées (réutilisables dès qu'une base réelle est identifiée)
+## Requêtes préparées (conservées pour mémoire, sans usage prévu)
 
-Les 7 requêtes en lecture seule (a, b, b bis, c, c bis, c ter, d) restent valides telles quelles contre toute base qui implémenterait effectivement le schéma de `prisma/schema.prisma` (commit `8257030`) — à rejouer contre la bonne base dès qu'elle est identifiée, sans modification.
+Les 7 requêtes en lecture seule (a, b, b bis, c, c bis, c ter, d) restaient valides contre toute base qui aurait implémenté le schéma de `prisma/schema.prisma` (commit `8257030`) — elles n'ont plus d'objet compte tenu de la confirmation ci-dessus, et ne seront pas rejouées sauf si cette confirmation devait un jour être révisée.
 
 ---
 
