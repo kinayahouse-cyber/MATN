@@ -42,6 +42,24 @@
 **Dépendances** : Gestion Clients, Gestion Projets.
 **Évolutions futures** : génération assistée de devis à partir de la grille tarifaire.
 
+### Label Workspace
+
+**Mission** : donner au monde Label (Track=Label) une vue de travail adaptée à son cycle de production propre, distincte de la fiche Projet générique Studio/Atelier.
+**Responsabilités** : dossier de développement (Documents rattachés) + bibliothèque d'assets (Actifs Créatifs) + suivi du stade de production dédié (Développement/Préprod/Prod/Distribution/Archive), format, statut de diffusion (ADR-008).
+**Utilisateurs** : fondateur.
+**Interactions** : consomme les mêmes entités que Gestion Projets (Projet, Track=Label) avec une présentation dédiée ; alimente Documents et Journal de décisions comme tout Projet.
+**Dépendances** : Gestion Projets (mêmes données, vue différente — pas de nouvelle entité).
+**Évolutions futures** : réception directe depuis le générateur IA nodal pour les Actifs Créatifs (crochet réservé, non codé en MVP).
+
+### Orbit
+
+**Mission** : annuaire des fournisseurs et intervenants externes à Kinaya (hors relation client).
+**Responsabilités** : création, consultation, mise à jour d'une fiche Fournisseur (nom, catégorie/spécialité, contact, notes).
+**Utilisateurs** : fondateur.
+**Interactions** : aucune avec les autres modules en MVP — annuaire autonome (ADR-008).
+**Dépendances** : aucune — module fondation, comme Gestion Clients.
+**Évolutions futures** : rattachement à Projet (qui a travaillé sur quoi) si le besoin se confirme en usage réel.
+
 ### Recherche / Mémoire contextuelle
 
 **Mission** : retrouver en moins de deux minutes le contexte complet d'un Client ou d'un Projet, y compris dormant.

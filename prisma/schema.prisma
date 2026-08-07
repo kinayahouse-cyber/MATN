@@ -1,0 +1,419 @@
+// Matn — schéma cible (Phase 2, MVP Mémoire)
+// Consolidé depuis : docs/foundation/audit-reconciliation.md, ADR-006, ADR-007, ADR-008
+// (docs/foundation/matn-livrable-10-adr-register.md), docs/foundation/plan-migration-adr006.md.
+//
+// Aucune donnée à migrer (confirmé 07/08, voir docs/foundation/dry-run-productionlabel.md) :
+// ce fichier est le schéma à créer directement, pas une migration incrémentale.
+//
+// Entités Post-MVP volontairement absentes de ce fichier (ontologie, Livrable 03) :
+// Opportunite, Facture, Paiement — module CRM/Finance, hors périmètre MVP Mémoire.
+// ProductionLabel et SectionDossier n'existent plus : fusionnés dans Projet et Document (ADR-006 pt.2, ADR-008).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Transverse
+// ---------------------------------------------------------------------------
+
+enum Track {
+  STUDIO
+  ATELIER
+  LABEL
+}
+// Track=GENERALITES de l'ancien schéma n'existe plus : devient Track=NULL (ADR-006 pt.3).
+
+// ---------------------------------------------------------------------------
+// Auth — mono-utilisateur pour l'instant (ADR-005), structuré pour accueillir plusieurs comptes.
+// ---------------------------------------------------------------------------
+
+model Utilisateur {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  nom       String?
+  createdAt DateTime @default(now())
+
+  tachesAssignees Tache[]
+
+  @@map("utilisateurs")
+}
+
+// ---------------------------------------------------------------------------
+// Client / Commercial
+// ---------------------------------------------------------------------------
+
+enum TypeOrganisation {
+  CLIENT_DIRECT
+  AGENCE
+  PRESCRIPTEUR
+}
+
+model Organisation {
+  id      String           @id @default(cuid())
+  nom     String
+  type    TypeOrganisation @default(CLIENT_DIRECT)
+  secteur String?
+
+  // Track dominant du Client (Business Ontology §2). Nullable : NULL transitoire tant que les
+  // anomalies de backfill (Organisations à Track multiple, ADR-007 pt.7) ne sont pas résolues
+  // manuellement ; NOT NULL visé ensuite, dans une migration de suivi distincte.
+  track Track?
+
+  // Identifiants légaux (Algérie)
+  nif String?
+  nis String?
+  rc  String?
+  ai  String?
+  rib String?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts  Contact[]
+  projets   Projet[]
+  decisions Decision[]
+  notesMatn Note[]
+  documents Document[]
+
+  // NB : l'ontologie (Livrable 03 §2) prévoit aussi `statut` (prospect/actif/dormant/archivé) et
+  // une date de premier contact — écarts déjà notés dans l'audit de réconciliation, jamais
+  // transformés en chantier de migration décidé. Volontairement non ajoutés ici.
+
+  @@map("organisations")
+}
+
+enum CanalContact {
+  EMAIL
+  TELEPHONE
+  WHATSAPP
+  AUTRE
+}
+
+enum Registre {
+  TU
+  VOUS
+}
+
+model Contact {
+  id             String        @id @default(cuid())
+  organisation   Organisation? @relation(fields: [organisationId], references: [id], onDelete: SetNull)
+  organisationId String?
+
+  // Relation directe Contact<->Projet (ADR-006 pt.5) — table de jointure vide au départ,
+  // peuplée au fil de l'eau, pas de pré-peuplement automatique (ADR-007 pt.5).
+  projets Projet[] @relation("ContactProjets")
+
+  nom       String
+  role      String?
+  canal     CanalContact @default(EMAIL)
+  registre  Registre     @default(VOUS)
+  email     String?
+  telephone String?
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contacts")
+}
+
+// ---------------------------------------------------------------------------
+// Projet — entité unifiée, y compris Track=Label (ADR-006 pt.2, ADR-008)
+// ---------------------------------------------------------------------------
+
+enum Engagement {
+  LECTURE
+  IDENTITE
+  FILM
+  EDITION
+  CAPSULES
+  MODULE_ATELIER
+}
+
+enum StadeProjet {
+  CADRAGE
+  PREPROD
+  PRODUCTION
+  LIVRAISON
+  CLOTURE
+}
+
+// Stade de production propre au monde Label (ADR-008) — coexiste avec StadeProjet plutôt que de
+// le remplacer : les deux cycles (commercial général / production Label) ne se recouvrent pas.
+enum StadeProductionLabel {
+  DEVELOPPEMENT
+  PREPROD
+  PROD
+  DISTRIBUTION
+  ARCHIVE
+}
+
+model Projet {
+  id   String @id @default(cuid())
+  code String @unique // KIN-26-{S|A|L|G}-XXX
+
+  nom        String
+  track      Track?
+  engagement Engagement?
+  stade      StadeProjet @default(CADRAGE)
+
+  // `budget` = plafond facturable, suivi contre Document de type DEVIS.
+  // `budgetInterne` = enveloppe d'investissement interne, non facturable (ADR-007 pt.2) —
+  // pas de fusion entre les deux, même pour les Projets Track=Label.
+  budget        Decimal? @db.Decimal(14, 2)
+  budgetInterne Decimal? @db.Decimal(14, 2)
+
+  // Champs structurés propres au monde Label, peuplés uniquement pour track=LABEL (ADR-008) —
+  // remplacent le champ JSON temporaire envisagé par ADR-007 pt.3 (devenu sans objet).
+  stadeLabel      StadeProductionLabel?
+  format          String?
+  statutDiffusion String?
+
+  // Palier (P0-P4) : retiré du périmètre de cette migration, sémantique non documentée
+  // (ADR-007 pt.6 ; question ouverte, Livrable 12 #07). Volontairement absent ici.
+
+  dateDebut     DateTime?
+  dateFinPrevue DateTime?
+
+  organisation   Organisation? @relation(fields: [organisationId], references: [id])
+  organisationId String?
+
+  contacts  Contact[]  @relation("ContactProjets")
+  documents Document[]
+  decisions Decision[]
+  notesMatn Note[]
+  assets    Asset[]
+  taches    Tache[]
+  depenses  Depense[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("projets")
+}
+
+// ---------------------------------------------------------------------------
+// Document — entité générique (ex-Devis + ex-SectionDossier, ADR-006 pt.4, ADR-007 pt.1/pt.4)
+// ---------------------------------------------------------------------------
+
+enum TypeDocument {
+  DEVIS
+  CONTRAT
+  GUIDELINE
+  LIVRABLE
+  COMPTE_RENDU
+}
+
+enum StatutDocument {
+  BROUILLON
+  VALIDE
+  ENVOYE
+  SIGNE // terminal
+  REFUSE // terminal — 5e statut, ADR-007 pt.1
+}
+
+model Document {
+  id       String        @id @default(cuid())
+  projet   Projet?       @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  projetId String?
+  client   Organisation? @relation(fields: [clientId], references: [id])
+  clientId String?
+
+  type   TypeDocument
+  numero String? // requis en pratique pour DEVIS ; optionnel pour les autres types
+  statut StatutDocument @default(BROUILLON)
+  track  Track? // dénormalisé depuis Projet.track à la création
+
+  lignes LigneDocument[] // vide pour les types hors DEVIS
+
+  versionDe   Document?  @relation("DocumentVersions", fields: [versionDeId], references: [id])
+  versionDeId String?
+  versions    Document[] @relation("DocumentVersions")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // NB : `numero` doit être unique seulement quand renseigné — un index unique classique sur ce
+  // champ rejetterait les multiples NULL. Nécessite un index unique PARTIEL
+  // (CREATE UNIQUE INDEX ... WHERE numero IS NOT NULL), non exprimable dans le DSL Prisma :
+  // à ajouter en SQL brut après `prisma migrate dev` (migration éditée manuellement).
+
+  @@map("documents")
+}
+
+model LigneDocument {
+  id         String   @id @default(cuid())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+
+  libelle      String
+  quantite     Decimal @default(1) @db.Decimal(10, 2)
+  prixUnitaire Decimal @db.Decimal(14, 2)
+  ordre        Int     @default(0)
+
+  @@map("lignes_document")
+}
+
+// ---------------------------------------------------------------------------
+// Décision — nouvelle entité, priorité absolue (Livrable 03 §6)
+// ---------------------------------------------------------------------------
+
+model Decision {
+  id              String   @id @default(cuid())
+  intitule        String
+  contexte        String?
+  optionsEcartees String?
+  justification   String
+  date            DateTime @default(now())
+  track           Track? // NULL = décision stratégique transverse (Livrable 06 §7)
+
+  // Entité liée : Projet OU Client OU aucune — jamais les deux (contrainte XOR non native à
+  // Prisma, à ajouter en SQL brut : CHECK (projet_id IS NULL OR client_id IS NULL)).
+  projet   Projet?       @relation(fields: [projetId], references: [id])
+  projetId String?
+  client   Organisation? @relation(fields: [clientId], references: [id])
+  clientId String?
+
+  // Immutabilité : une Décision qui évolue devient une nouvelle Décision qui référence la
+  // précédente (Livrable 03 §6) — non imposé au niveau du schéma, règle de la future Couche
+  // Logique Métier.
+  remplace     Decision?  @relation("DecisionRevision", fields: [remplaceId], references: [id])
+  remplaceId   String?    @unique
+  remplaceePar Decision?  @relation("DecisionRevision")
+
+  createdAt DateTime @default(now())
+
+  @@map("decisions")
+}
+
+// ---------------------------------------------------------------------------
+// Note — ex-Concept (ADR-006 pt.4 implicite via ontologie §7)
+// ---------------------------------------------------------------------------
+
+model Note {
+  id       String        @id @default(cuid())
+  projet   Projet?       @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  projetId String?
+  client   Organisation? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String?
+
+  titre   String?
+  contenu String
+  tag     String? // tag libre — passage à String[] si besoin de multi-tags en usage réel
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Même remarque que Decision : contrainte XOR (projetId/clientId) à ajouter en SQL brut.
+
+  @@map("notes")
+}
+
+// ---------------------------------------------------------------------------
+// Actif Créatif (ex-Asset) — rattaché à Projet, plus à ProductionLabel (ADR-006 pt.2)
+// ---------------------------------------------------------------------------
+// NB : l'ontologie (Livrable 03 §8) classe "Actif Créatif" en Post-MVP dans sa forme complète
+// (versionnement, portfolio). Ce modèle reprend la forme minimale de l'ancien Asset — stockage
+// de fichier simple — nécessaire pour ne pas perdre les Asset existants lors de la fusion Label.
+// Tension non résolue entre les deux : signalée, pas tranchée ici.
+
+enum TypeAsset {
+  IMAGE
+  VIDEO
+  SON
+  DOC
+}
+
+model Asset {
+  id       String @id @default(cuid())
+  projet   Projet @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  projetId String
+
+  type               TypeAsset
+  nom                String
+  url                String
+  sourceGenerateurIa Boolean @default(false) // crochet réservé : génération IA nodale, non implémentée
+
+  createdAt DateTime @default(now())
+
+  @@map("assets")
+}
+
+// ---------------------------------------------------------------------------
+// Fournisseur — nouvelle entité, module Orbit (ADR-008)
+// ---------------------------------------------------------------------------
+
+model Fournisseur {
+  id        String  @id @default(cuid())
+  nom       String
+  categorie String?
+  contact   String?
+  email     String?
+  telephone String?
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Pas de relation à Projet en MVP — annuaire autonome, exclu explicitement (ADR-008).
+  // À ajouter (relation many-to-many) si le besoin de traçabilité se confirme en usage réel.
+
+  @@map("fournisseurs")
+}
+
+// ---------------------------------------------------------------------------
+// Opérationnel — Tâche / Dépense (hors ontologie métier, jamais remis en cause)
+// ---------------------------------------------------------------------------
+
+enum StatutTache {
+  A_FAIRE
+  EN_COURS
+  FAIT
+}
+
+model Tache {
+  id String @id @default(cuid())
+
+  // Rattachée à un Projet — ProductionLabel n'existant plus (fusionné), l'alternative de
+  // rattachement de l'ancien schéma a disparu ; le champ redevient obligatoire.
+  projet   Projet @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  projetId String
+
+  libelle  String
+  statut   StatutTache @default(A_FAIRE)
+  echeance DateTime?
+
+  assigneA   Utilisateur? @relation(fields: [assigneAId], references: [id])
+  assigneAId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("taches")
+}
+
+model Depense {
+  id String @id @default(cuid())
+
+  // Rattachable à un Projet, ou générale (les deux cas déjà supportés par l'ancien schéma ;
+  // ProductionLabel comme alternative a disparu avec la fusion).
+  projet   Projet? @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  projetId String?
+
+  categorie String
+  montant   Decimal  @db.Decimal(14, 2)
+  date      DateTime @default(now())
+  notes     String?
+
+  createdAt DateTime @default(now())
+
+  @@map("depenses")
+}

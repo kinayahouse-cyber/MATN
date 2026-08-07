@@ -157,4 +157,31 @@
 
 ---
 
+## ADR-008 — Label Workspace (champs structurés sur Projet) et entité Fournisseur (Orbit)
+
+**Contexte** : avant l'écriture du `schema.prisma` cible, le fondateur signale que Label a des besoins qui débordent du Projet unifié tel que fusionné par ADR-006 point 2, et demande l'ajout d'une nouvelle entité (annuaire de fournisseurs/intervenants, module « Orbit »).
+
+**Problème** : deux ajouts à trancher avant le schéma cible — (1) jusqu'où va la spécificité Label dans un Projet resté unifié, sans revenir sur la fusion ADR-006 pt.2 ; (2) le périmètre minimal de l'entité Fournisseur.
+
+**Décisions retenues** :
+
+1. **Label reste un Projet (Track=Label), pas une entité séparée** — la fusion d'ADR-006 point 2 n'est pas défaite. En revanche, `Projet` gagne trois champs structurés propres au monde Label, peuplés uniquement pour Track=Label :
+   - `stadeLabel` (enum dédié, repris de l'ancien `StadeProductionLabel` : Développement/Préprod/Prod/Distribution/Archive) — coexiste avec le `stade` général du Projet (cycle commercial) plutôt que de le remplacer, faute de recouvrement propre entre les deux cycles.
+   - `format` (texte structuré).
+   - `statutDiffusion` (texte structuré).
+   Ces trois champs **remplacent** le champ `metadonneesMigration` (JSON temporaire) prévu par ADR-007 point 3 — `format` et `statutDiffusion` ont désormais une destination définitive, la préservation temporaire en JSON n'a plus lieu d'être.
+2. **Nouvelle entité `Fournisseur`** (module produit « Orbit ») : annuaire simple — nom, catégorie/spécialité, contact, notes. **Aucune relation structurelle vers `Projet` dans ce MVP** — explicitement écarté par le fondateur, à réévaluer plus tard si le besoin de traçabilité « qui a travaillé sur quel Projet » émerge en usage réel.
+
+**Justification** : Label a un cycle de production réel (développement → distribution) que le cycle commercial générique de Projet ne représente pas fidèlement — l'ancien mapping approximatif (plan de migration, §3) le confirmait déjà. Lui donner des champs structurés dédiés plutôt que de le forcer dans `stade` ou de le reléguer en JSON règle ce problème sans dupliquer toute l'entité Projet. Fournisseur reste volontairement minimal (pas de relation) pour ne pas anticiper un besoin non confirmé — cohérent avec le principe de simplicité déjà appliqué ailleurs dans l'ontologie (Product Philosophy, Livrable 02).
+
+**Conséquences** :
+- Business Ontology (Livrable 03) : ajout de la section Fournisseur (nouvelle entité MVP) ; note sur les champs Label de Projet.
+- Product Modules (Livrable 08) : ajout de deux modules MVP — Label Workspace, Orbit.
+- `docs/foundation/plan-migration-adr006.md` §3 : le champ `metadonneesMigration` y est décrit comme temporaire ; cette description est supersédée ici pour le cas Label spécifiquement (le plan garde sa valeur historique, cette ADR prime pour le schéma cible réel).
+- `prisma/schema.prisma` (à écrire) intègre ces deux décisions directement dans le schéma cible, sans étape de migration intermédiaire (aucune donnée existante, cf. `docs/foundation/dry-run-productionlabel.md`).
+
+**Alternatives futures** : si Fournisseur a besoin d'un rattachement à Projet plus tard, ajouter une relation many-to-many à ce moment-là — pas de table de jointure prématurée aujourd'hui.
+
+---
+
 *MATN · ADR Register · Livrable 10 · Claude Strategist*

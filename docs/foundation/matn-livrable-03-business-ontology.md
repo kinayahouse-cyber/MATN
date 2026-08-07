@@ -46,13 +46,13 @@ Porté par toute entité rattachée à un client ou un projet (Client, Projet, D
 
 **Cycle de vie** : Devis envoyé → Signé → En cours → Livré → Clos. Statut "Abandonné" possible depuis n'importe quelle étape avant Signé. La phase amont (prospection, avant devis) est portée par l'entité Opportunité, module CRM (Post-MVP) — un Projet, au sens de cette ontologie, existe à partir de l'émission d'un devis.
 
-**Règles métier** : un Projet hérite du Track de son Client au moment de la création et ne peut pas en changer en cours de route. Un Projet de Track Label suit exactement la même structure que tout autre Projet — aucune entité distincte pour le monde Label.
+**Règles métier** : un Projet hérite du Track de son Client au moment de la création et ne peut pas en changer en cours de route. Un Projet de Track Label suit exactement la même structure que tout autre Projet — aucune entité distincte pour le monde Label (ADR-006). Il porte cependant trois propriétés structurées propres au monde Label, peuplées uniquement pour Track=Label : un stade de production dédié (Développement/Préprod/Prod/Distribution/Archive, distinct du statut commercial général), un format, un statut de diffusion (ADR-008).
 
 ## 5. Document — MVP
 
 **Définition** : tout artefact écrit rattaché à un Projet ou un Client — devis, contrat, guideline, livrable final, compte-rendu.
 
-**Propriétés clés** : type (devis / contrat / livrable / guideline / autre), version, statut (brouillon / validé / envoyé / signé / refusé), métadonnées libres (optionnel — préserve les champs sans équivalent structuré lors d'une migration, ex. format, statut de diffusion).
+**Propriétés clés** : type (devis / contrat / livrable / guideline / autre), version, statut (brouillon / validé / envoyé / signé / refusé).
 
 **Relations** : rattaché à un Projet et/ou un Client.
 
@@ -105,6 +105,18 @@ Porté par toute entité rattachée à un client ou un projet (Client, Projet, D
 **Propriétés clés** : nom, rôle.
 
 **Règles métier** : un seul Utilisateur actif en MVP (PRD, section 4). La notion de Rôle avec permissions différenciées devient une entité à part entière en Post-MVP, au moment du recrutement BD ou de l'intégration d'un premier freelance.
+
+## 12. Fournisseur — MVP (annuaire minimal)
+
+**Définition** : une entité externe (personne ou structure) fournissant une prestation ou une ressource à Kinaya — sans lien commercial client, à l'inverse de Client. Sert de support au module Orbit.
+
+**Propriétés clés** : nom, catégorie / spécialité, contact, notes.
+
+**Relations** : aucune en MVP — pas de rattachement à Projet (ADR-008). Simple annuaire, indépendant du reste de l'ontologie pour l'instant.
+
+**Cycle de vie** : créé librement, pas de statut ni de workflow en MVP.
+
+**Règles métier** : ne porte pas de Track — n'est rattaché à aucun Client ni Projet, donc hors du périmètre du cloisonnement Studio/Atelier.
 
 ---
 
