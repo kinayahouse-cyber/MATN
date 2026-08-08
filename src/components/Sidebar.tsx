@@ -1,14 +1,14 @@
 import Link from 'next/link';
 
+// IA alignée sur le wireframe Project Workspace (Figma, 08/08) : Décisions/Documents/Recherche
+// se regroupent sous Knowledge Hub plutôt que d'être des items séparés. Label Workspace n'est pas
+// une entrée de nav distincte : c'est une vue filtrée (Track=Label) de Projects (ADR-006 pt.2).
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Tableau de bord' },
-  { href: '/clients', label: 'Clients' },
-  { href: '/projets', label: 'Projets' },
-  { href: '/label', label: 'Label Workspace' },
+  { href: '/dashboard', label: 'Home' },
+  { href: '/clients', label: 'Client' },
+  { href: '/projets', label: 'Projects' },
   { href: '/orbit', label: 'Orbit' },
-  { href: '/decisions', label: 'Décisions' },
-  { href: '/documents', label: 'Documents' },
-  { href: '/recherche', label: 'Recherche' },
+  { href: '/knowledge-hub', label: 'Knowledge Hub' },
 ];
 
 export function Sidebar() {
