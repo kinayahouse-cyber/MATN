@@ -138,12 +138,18 @@ enum Engagement {
   MODULE_ATELIER
 }
 
+// Cycle commercial général (Studio/Atelier) — corrigé (ADR-009) pour correspondre au cycle
+// décrit par l'ontologie (Livrable 03 §4) : Devis envoyé → Signé → En cours → Livré → Clos,
+// Abandonné possible depuis n'importe quelle étape avant Signé. Les valeurs précédentes
+// (Cadrage/Préprod/Production/Livraison/Clôture) avaient été reprises telles quelles de l'ancien
+// schéma sans être réalignées sur ce cycle au moment d'ADR-006/007 — erreur corrigée ici.
 enum StadeProjet {
-  CADRAGE
-  PREPROD
-  PRODUCTION
-  LIVRAISON
-  CLOTURE
+  DEVIS_ENVOYE
+  SIGNE
+  EN_COURS
+  LIVRE
+  CLOS
+  ABANDONNE
 }
 
 // Stade de production propre au monde Label (ADR-008) — coexiste avec StadeProjet plutôt que de
@@ -160,10 +166,11 @@ model Projet {
   id   String @id @default(cuid())
   code String @unique // KIN-26-{S|A|L|G}-XXX
 
-  nom        String
-  track      Track?
-  engagement Engagement?
-  stade      StadeProjet @default(CADRAGE)
+  nom         String
+  description String?
+  track       Track?
+  engagement  Engagement?
+  stade       StadeProjet @default(DEVIS_ENVOYE)
 
   // `budget` = plafond facturable, suivi contre Document de type DEVIS.
   // `budgetInterne` = enveloppe d'investissement interne, non facturable (ADR-007 pt.2) —
@@ -193,11 +200,32 @@ model Projet {
   assets    Asset[]
   taches    Tache[]
   depenses  Depense[]
+  jalons    Jalon[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("projets")
+}
+
+// ---------------------------------------------------------------------------
+// Jalon — nouvelle entité (ADR-009), liste de jalons datés par Projet
+// ---------------------------------------------------------------------------
+
+model Jalon {
+  id       String @id @default(cuid())
+  projet   Projet @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  projetId String
+
+  libelle String
+  date    DateTime
+  atteint Boolean @default(false) // interprétation du marqueur de statut du wireframe — à confirmer
+  ordre   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("jalons")
 }
 
 // ---------------------------------------------------------------------------

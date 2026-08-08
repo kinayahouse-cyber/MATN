@@ -184,4 +184,27 @@
 
 ---
 
+## ADR-009 — Correction de StadeProjet et nouvelle entité Jalon (Project Workspace)
+
+**Contexte** : le premier wireframe du Project Workspace (fondateur, sur Figma) fait apparaître deux écarts entre `prisma/schema.prisma` et l'ontologie : (1) le cycle affiché dans le wireframe (Devis · Signé · En cours · Livré · Clos) ne correspond pas aux valeurs de `StadeProjet` du schéma (Cadrage/Préprod/Production/Livraison/Clôture) ; (2) le wireframe montre une section « Jalons » (liste de dates avec statut) sans équivalent dans le schéma.
+
+**Problème** : `StadeProjet` avait été repris tel quel de l'ancien schéma (`prisma/schema.prisma` historique, commit `8257030`) au moment d'ADR-006/007, sans être réaligné sur le cycle déjà redéfini dans l'ontologie (Livrable 03 §4 : « Devis envoyé → Signé → En cours → Livré → Clos ») — erreur de cohérence entre la documentation et le schéma, pas une décision produit à trancher. Les Jalons, eux, n'avaient jamais été modélisés (l'ontologie les mentionne comme propriété de Projet, « dates clés (signature, jalons, livraison) », sans détail de structure).
+
+**Décisions retenues** :
+
+1. **`StadeProjet` corrigé** : `DEVIS_ENVOYE`, `SIGNE`, `EN_COURS`, `LIVRE`, `CLOS`, `ABANDONNE` — conforme à Livrable 03 §4. S'applique au cycle commercial général (Studio/Atelier) ; le cycle Label (`stadeLabel`, ADR-008) reste inchangé et continue de coexister, sans recouvrement entre les deux.
+2. **Nouvelle entité `Jalon`** : `libelle`, `date`, `atteint` (booléen), `ordre`, rattachée à un `Projet` (cascade). Modélisée en table dédiée plutôt qu'en JSON pour permettre une liste de taille arbitraire et un statut par jalon, conforme au wireframe.
+3. **`Projet.description`** ajouté (texte libre) — nécessaire à l'affichage du Project Workspace, absent du schéma jusqu'ici.
+
+**Justification** : le point 1 est une correction de bug (documentation déjà à jour, schéma en retard), pas un arbitrage. Le point 2 suit le principe déjà appliqué pour Décision/Note : une table dédiée plutôt qu'un champ non structuré, cohérent avec l'exigence de mémoire structurée du Livrable 06.
+
+**Conséquences** :
+- `prisma/schema.prisma` mis à jour ; migration à appliquer sur la base (vide, sans risque de perte — `docs/foundation/dry-run-productionlabel.md`).
+- L'interprétation de `atteint` comme booléen (plutôt qu'un statut à plusieurs valeurs) n'est pas confirmée par le wireframe, qui ne montre qu'un texte placeholder (« Statut_V1 ») — à ajuster si le design final précise autre chose.
+- Le contenu de la section « Scopes » du wireframe n'est pas encore modélisé — aucune structure de données déterminable depuis ce premier wireframe, laissé de côté jusqu'à précision.
+
+**Alternatives futures** : si `atteint` (booléen) s'avère insuffisant en usage (ex. un jalon « en retard » distinct de « à venir »), migrer vers un enum `StatutJalon` à ce moment-là.
+
+---
+
 *MATN · ADR Register · Livrable 10 · Claude Strategist*
