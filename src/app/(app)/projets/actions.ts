@@ -30,6 +30,28 @@ export async function createProjet(formData: FormData) {
   redirect(`/projets/${projet.id}`);
 }
 
+export async function createProjetInline(
+  code: string,
+  nom: string,
+  organisationId: string,
+  track: string
+) {
+  const trimmedCode = code.trim();
+  const trimmedNom = nom.trim();
+  if (!trimmedCode || !trimmedNom) throw new Error('Code et nom requis');
+
+  await prisma.projet.create({
+    data: {
+      code: trimmedCode,
+      nom: trimmedNom,
+      organisationId: organisationId || null,
+      track: track ? (track as Track) : null,
+    },
+  });
+
+  revalidatePath('/projets');
+}
+
 export async function addJalon(formData: FormData) {
   const projetId = String(formData.get('projetId') ?? '').trim();
   const libelle = String(formData.get('libelle') ?? '').trim();
@@ -70,6 +92,7 @@ const PROJET_EDITABLE_FIELDS = [
   'budgetInterne',
   'dateDebut',
   'dateFinPrevue',
+  'organisationId',
 ] as const;
 type ProjetField = (typeof PROJET_EDITABLE_FIELDS)[number];
 
