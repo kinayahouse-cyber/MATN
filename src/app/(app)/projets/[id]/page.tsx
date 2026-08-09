@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { STADE_PROJET_LABELS, ENGAGEMENT_LABELS, TYPE_DOCUMENT_LABELS } from '@/lib/labels';
-import { addJalon, addDocument, updateStade } from '../actions';
+import { addJalon, addDocument, updateStade, addDecision, addNote } from '../actions';
 
 const STADE_ORDER = ['DEVIS_ENVOYE', 'SIGNE', 'EN_COURS', 'LIVRE', 'CLOS'] as const;
 
@@ -308,12 +308,64 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
             <p className="mt-1 text-xs text-neutral-500">{timeAgo(entry.date)}</p>
           </div>
         ))}
-        <button
-          type="button"
-          className="flex items-center justify-center rounded-md border border-dashed border-neutral-700 p-3 text-sm text-neutral-400 hover:border-neutral-500 hover:text-neutral-100"
-        >
-          + Capturer
-        </button>
+        <div className="space-y-2">
+          <details className="rounded-md border border-dashed border-neutral-700 p-3">
+            <summary className="cursor-pointer text-sm text-neutral-400 hover:text-neutral-100">
+              + Décision
+            </summary>
+            <form action={addDecision} className="mt-3 space-y-2">
+              <input type="hidden" name="projetId" value={projet.id} />
+              <input name="intitule" required placeholder="Intitulé" className={inputClass} />
+              <textarea
+                name="justification"
+                required
+                rows={2}
+                placeholder="Justification"
+                className={inputClass}
+              />
+              <details>
+                <summary className="cursor-pointer text-xs text-neutral-600 hover:text-neutral-400">
+                  + Contexte / options écartées
+                </summary>
+                <textarea
+                  name="contexte"
+                  rows={2}
+                  placeholder="Contexte"
+                  className={`${inputClass} mt-2`}
+                />
+                <textarea
+                  name="optionsEcartees"
+                  rows={2}
+                  placeholder="Options écartées"
+                  className={`${inputClass} mt-2`}
+                />
+              </details>
+              <button
+                type="submit"
+                className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-950"
+              >
+                Logger
+              </button>
+            </form>
+          </details>
+
+          <details className="rounded-md border border-dashed border-neutral-700 p-3">
+            <summary className="cursor-pointer text-sm text-neutral-400 hover:text-neutral-100">
+              + Note
+            </summary>
+            <form action={addNote} className="mt-3 space-y-2">
+              <input type="hidden" name="projetId" value={projet.id} />
+              <textarea name="contenu" required rows={2} placeholder="Contenu" className={inputClass} />
+              <input name="tag" placeholder="Tag (optionnel)" className={inputClass} />
+              <button
+                type="submit"
+                className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-950"
+              >
+                Ajouter
+              </button>
+            </form>
+          </details>
+        </div>
       </section>
     </div>
   );

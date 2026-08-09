@@ -70,3 +70,36 @@ export async function updateStade(formData: FormData) {
   revalidatePath(`/projets/${projetId}`);
   redirect(`/projets/${projetId}`);
 }
+
+// Capture à friction minimale (Livrable 06 §3) : intitulé + justification suffisent pour logger
+// une Décision ; contexte/optionsEcartees restent optionnels pour ne pas bloquer la capture.
+export async function addDecision(formData: FormData) {
+  const projetId = String(formData.get('projetId') ?? '').trim();
+  const intitule = String(formData.get('intitule') ?? '').trim();
+  const justification = String(formData.get('justification') ?? '').trim();
+  if (!projetId || !intitule || !justification) throw new Error('Champs requis manquants');
+
+  const contexte = String(formData.get('contexte') ?? '').trim() || null;
+  const optionsEcartees = String(formData.get('optionsEcartees') ?? '').trim() || null;
+
+  await prisma.decision.create({
+    data: { projetId, intitule, justification, contexte, optionsEcartees },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+  redirect(`/projets/${projetId}`);
+}
+
+export async function addNote(formData: FormData) {
+  const projetId = String(formData.get('projetId') ?? '').trim();
+  const contenu = String(formData.get('contenu') ?? '').trim();
+  if (!projetId || !contenu) throw new Error('Contenu requis');
+
+  const titre = String(formData.get('titre') ?? '').trim() || null;
+  const tag = String(formData.get('tag') ?? '').trim() || null;
+
+  await prisma.note.create({ data: { projetId, contenu, titre, tag } });
+
+  revalidatePath(`/projets/${projetId}`);
+  redirect(`/projets/${projetId}`);
+}
