@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import type { CategorieFournisseur } from '@prisma/client';
+import type { CategorieFournisseur, Prisma } from '@prisma/client';
 
 export async function createFournisseur(formData: FormData) {
   const nom = String(formData.get('nom') ?? '').trim();
@@ -22,4 +22,27 @@ export async function createFournisseur(formData: FormData) {
 
   revalidatePath('/orbit');
   redirect('/orbit');
+}
+
+const FOURNISSEUR_EDITABLE_FIELDS = [
+  'nom',
+  'categorie',
+  'contact',
+  'email',
+  'telephone',
+  'notes',
+] as const;
+type FournisseurField = (typeof FOURNISSEUR_EDITABLE_FIELDS)[number];
+
+export async function updateFournisseurField(id: string, field: FournisseurField, value: string) {
+  if (!FOURNISSEUR_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
+
+  const trimmed = value.trim();
+  await prisma.fournisseur.update({
+    where: { id },
+    data: { [field]: trimmed || null } as Prisma.FournisseurUpdateInput,
+  });
+
+  revalidatePath('/orbit');
+  revalidatePath(`/orbit/${id}`);
 }

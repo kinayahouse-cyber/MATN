@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import type { Track, Engagement, StadeProjet, TypeDocument } from '@prisma/client';
+import type { Track, Engagement, TypeDocument, Prisma } from '@prisma/client';
 
 export async function createProjet(formData: FormData) {
   const code = String(formData.get('code') ?? '').trim();
@@ -60,15 +60,37 @@ export async function addDocument(formData: FormData) {
   redirect(`/projets/${projetId}`);
 }
 
-export async function updateStade(formData: FormData) {
-  const projetId = String(formData.get('projetId') ?? '').trim();
-  const stade = String(formData.get('stade') ?? '').trim() as StadeProjet;
-  if (!projetId || !stade) throw new Error('Champs requis manquants');
+const PROJET_EDITABLE_FIELDS = [
+  'nom',
+  'description',
+  'track',
+  'engagement',
+  'stade',
+  'budget',
+  'budgetInterne',
+  'dateDebut',
+  'dateFinPrevue',
+] as const;
+type ProjetField = (typeof PROJET_EDITABLE_FIELDS)[number];
 
-  await prisma.projet.update({ where: { id: projetId }, data: { stade } });
+const PROJET_DATE_FIELDS = new Set(['dateDebut', 'dateFinPrevue']);
+const PROJET_DECIMAL_FIELDS = new Set(['budget', 'budgetInterne']);
 
-  revalidatePath(`/projets/${projetId}`);
-  redirect(`/projets/${projetId}`);
+export async function updateProjetField(id: string, field: ProjetField, value: string) {
+  if (!PROJET_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
+
+  const trimmed = value.trim();
+  let parsed: string | number | Date | null = trimmed || null;
+  if (parsed !== null && PROJET_DATE_FIELDS.has(field)) parsed = new Date(trimmed);
+  if (parsed !== null && PROJET_DECIMAL_FIELDS.has(field)) parsed = Number(trimmed);
+
+  await prisma.projet.update({
+    where: { id },
+    data: { [field]: parsed } as Prisma.ProjetUpdateInput,
+  });
+
+  revalidatePath('/projets');
+  revalidatePath(`/projets/${id}`);
 }
 
 // Capture à friction minimale (Livrable 06 §3) : intitulé + justification suffisent pour logger

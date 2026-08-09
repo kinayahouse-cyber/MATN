@@ -1,8 +1,15 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { CATEGORIE_FOURNISSEUR_LABELS } from '@/lib/labels';
+import { EditableField } from '@/components/EditableField';
+import { updateFournisseurField } from './actions';
 
 export const dynamic = 'force-dynamic';
+
+const categorieOptions = Object.entries(CATEGORIE_FOURNISSEUR_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 export default async function OrbitPage() {
   const fournisseurs = await prisma.fournisseur.findMany({ orderBy: { nom: 'asc' } });
@@ -42,7 +49,12 @@ export default async function OrbitPage() {
                   </Link>
                 </td>
                 <td className="text-neutral-400">
-                  {f.categorie ? CATEGORIE_FOURNISSEUR_LABELS[f.categorie] : '—'}
+                  <EditableField
+                    value={f.categorie ?? ''}
+                    onSave={updateFournisseurField.bind(null, f.id, 'categorie')}
+                    type="select"
+                    options={categorieOptions}
+                  />
                 </td>
                 <td className="text-neutral-400">{f.contact ?? f.email ?? '—'}</td>
               </tr>

@@ -1,10 +1,24 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
-import { STADE_PROJET_LABELS, ENGAGEMENT_LABELS, TYPE_DOCUMENT_LABELS } from '@/lib/labels';
-import { addJalon, addDocument, updateStade, addDecision, addNote } from '../actions';
+import {
+  STADE_PROJET_LABELS,
+  ENGAGEMENT_LABELS,
+  TYPE_DOCUMENT_LABELS,
+} from '@/lib/labels';
+import { addJalon, addDocument, updateProjetField, addDecision, addNote } from '../actions';
+import { EditableField } from '@/components/EditableField';
 
 const STADE_ORDER = ['DEVIS_ENVOYE', 'SIGNE', 'EN_COURS', 'LIVRE', 'CLOS'] as const;
+
+const engagementOptions = Object.entries(ENGAGEMENT_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+const stadeOptions = [...STADE_ORDER, 'ABANDONNE'].map((value) => ({
+  value,
+  label: STADE_PROJET_LABELS[value],
+}));
 
 const inputClass =
   'mt-1 w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm';
@@ -67,6 +81,12 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
   const stadeIndex = STADE_ORDER.indexOf(projet.stade as (typeof STADE_ORDER)[number]);
   const budget = formatMontant(projet.budget);
   const budgetInterne = formatMontant(projet.budgetInterne);
+  const budgetRaw = projet.budget === null ? '' : String(projet.budget);
+  const budgetInterneRaw = projet.budgetInterne === null ? '' : String(projet.budgetInterne);
+  const dateDebutRaw = projet.dateDebut ? projet.dateDebut.toISOString().slice(0, 10) : '';
+  const dateFinPrevueRaw = projet.dateFinPrevue
+    ? projet.dateFinPrevue.toISOString().slice(0, 10)
+    : '';
 
   return (
     <div className="space-y-8">
@@ -75,43 +95,83 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         <div>
           <p className="text-xs uppercase tracking-wide text-neutral-500">Overview</p>
           <h2 className="mt-2 text-lg font-medium">Description</h2>
-          <p className="mt-2 text-sm text-neutral-400">
-            {projet.description ?? 'Aucune description.'}
-          </p>
+          <EditableField
+            value={projet.description ?? ''}
+            onSave={updateProjetField.bind(null, projet.id, 'description')}
+            type="textarea"
+            placeholder="Aucune description."
+            className="mt-2 text-sm text-neutral-400"
+          />
 
           {/* Scopes : contenu non encore modélisé (ADR-009) — placeholder */}
           <p className="mt-6 text-xs uppercase tracking-wide text-neutral-500">Scopes</p>
           <p className="mt-1 text-sm text-neutral-600">À définir.</p>
 
-          {projet.engagement && (
-            <p className="mt-4 text-sm text-neutral-400">
-              Type d&rsquo;engagement : {ENGAGEMENT_LABELS[projet.engagement] ?? projet.engagement}
+          <div className="mt-4">
+            <p className="text-xs uppercase tracking-wide text-neutral-500">
+              Type d&rsquo;engagement
             </p>
-          )}
+            <EditableField
+              value={projet.engagement ?? ''}
+              onSave={updateProjetField.bind(null, projet.id, 'engagement')}
+              type="select"
+              options={engagementOptions}
+              className="mt-1 text-sm text-neutral-400"
+            />
+          </div>
 
-          {(budget || budgetInterne) && (
-            <div className="mt-4 flex gap-6 text-sm">
-              {budget && (
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-neutral-500">Budget</p>
-                  <p className="mt-1 font-medium tabular-nums">{budget}</p>
-                </div>
-              )}
-              {budgetInterne && (
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-neutral-500">
-                    Budget interne
-                  </p>
-                  <p className="mt-1 font-medium tabular-nums">{budgetInterne}</p>
-                </div>
-              )}
+          <div className="mt-4 flex gap-6 text-sm">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Budget</p>
+              <EditableField
+                value={budgetRaw}
+                displayValue={budget ?? undefined}
+                onSave={updateProjetField.bind(null, projet.id, 'budget')}
+                type="number"
+                className="mt-1 font-medium tabular-nums"
+              />
             </div>
-          )}
+            <div>
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Budget interne</p>
+              <EditableField
+                value={budgetInterneRaw}
+                displayValue={budgetInterne ?? undefined}
+                onSave={updateProjetField.bind(null, projet.id, 'budgetInterne')}
+                type="number"
+                className="mt-1 font-medium tabular-nums"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex gap-6 text-sm">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Début</p>
+              <EditableField
+                value={dateDebutRaw}
+                onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
+                type="date"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Fin prévue</p>
+              <EditableField
+                value={dateFinPrevueRaw}
+                onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
+                type="date"
+                className="mt-1"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex items-start justify-between border-t border-neutral-800 pt-4 md:border-l md:border-t-0 md:pl-8 md:pt-0">
-          <div>
-            <h1 className="text-xl font-medium">{projet.nom}</h1>
+          <div className="flex-1">
+            <EditableField
+              value={projet.nom}
+              onSave={updateProjetField.bind(null, projet.id, 'nom')}
+              className="text-xl font-medium"
+            />
             {projet.organisation && (
               <Link
                 href={`/clients/${projet.organisation.id}`}
@@ -121,26 +181,13 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               </Link>
             )}
           </div>
-          <form action={updateStade} className="flex items-center gap-2">
-            <input type="hidden" name="projetId" value={projet.id} />
-            <select
-              name="stade"
-              defaultValue={projet.stade}
-              className="rounded-full border border-neutral-800 bg-transparent px-3 py-1 text-xs"
-            >
-              {[...STADE_ORDER, 'ABANDONNE'].map((s) => (
-                <option key={s} value={s}>
-                  {STADE_PROJET_LABELS[s]}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-950"
-            >
-              OK
-            </button>
-          </form>
+          <EditableField
+            value={projet.stade}
+            onSave={updateProjetField.bind(null, projet.id, 'stade')}
+            type="select"
+            options={stadeOptions}
+            className="rounded-full border border-neutral-800 px-3 py-1 text-xs"
+          />
         </div>
       </section>
 

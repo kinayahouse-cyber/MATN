@@ -1,8 +1,16 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { STADE_PROJET_LABELS, TRACK_LABELS } from '@/lib/labels';
+import { EditableField } from '@/components/EditableField';
+import { updateProjetField } from './actions';
 
 export const dynamic = 'force-dynamic';
+
+const trackOptions = Object.entries(TRACK_LABELS).map(([value, label]) => ({ value, label }));
+const stadeOptions = Object.entries(STADE_PROJET_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 export default async function ProjetsPage() {
   const projets = await prisma.projet.findMany({
@@ -45,8 +53,22 @@ export default async function ProjetsPage() {
                   </Link>
                 </td>
                 <td className="text-neutral-400">{p.organisation?.nom ?? '—'}</td>
-                <td className="text-neutral-400">{p.track ? TRACK_LABELS[p.track] : '—'}</td>
-                <td className="text-neutral-400">{STADE_PROJET_LABELS[p.stade] ?? p.stade}</td>
+                <td className="text-neutral-400">
+                  <EditableField
+                    value={p.track ?? ''}
+                    onSave={updateProjetField.bind(null, p.id, 'track')}
+                    type="select"
+                    options={trackOptions}
+                  />
+                </td>
+                <td className="text-neutral-400">
+                  <EditableField
+                    value={p.stade}
+                    onSave={updateProjetField.bind(null, p.id, 'stade')}
+                    type="select"
+                    options={stadeOptions}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
