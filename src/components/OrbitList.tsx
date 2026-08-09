@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
+import { Toolbar, toolbarInputClass } from '@/components/database/Toolbar';
 import { updateFournisseurField, deleteFournisseur } from '@/app/(app)/orbit/actions';
 import { CATEGORIE_FOURNISSEUR_LABELS } from '@/lib/labels';
 
@@ -39,22 +40,19 @@ export function OrbitList({ fournisseurs }: { fournisseurs: Fournisseur[] }) {
     });
   }, [fournisseurs, search, categorieFilter]);
 
-  const selectClass =
-    'rounded-md border border-neutral-800 bg-transparent px-2 py-1.5 text-sm text-neutral-300';
-
   return (
     <div>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <Toolbar>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un fournisseur…"
-          className={`${selectClass} flex-1 min-w-[10rem]`}
+          placeholder="Rechercher…"
+          className={`${toolbarInputClass} min-w-[10rem] flex-1`}
         />
         <select
           value={categorieFilter}
           onChange={(e) => setCategorieFilter(e.target.value)}
-          className={selectClass}
+          className={toolbarInputClass}
         >
           <option value="">Toutes les catégories</option>
           {categorieOptions.map((o) => (
@@ -63,14 +61,14 @@ export function OrbitList({ fournisseurs }: { fournisseurs: Fournisseur[] }) {
             </option>
           ))}
         </select>
-      </div>
+      </Toolbar>
 
       {filtered.length === 0 ? (
-        <p className="mt-4 text-sm text-neutral-600">Aucun fournisseur.</p>
+        <p className="text-sm text-muted">Aucun fournisseur.</p>
       ) : (
-        <table className="mt-4 w-full text-left text-sm">
+        <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-neutral-800 text-xs uppercase text-neutral-500">
+            <tr className="border-b border-line-strong text-xs uppercase tracking-wide text-muted">
               <th className="py-2 font-normal">Nom</th>
               <th className="font-normal">Catégorie</th>
               <th className="font-normal">Contact</th>
@@ -79,13 +77,13 @@ export function OrbitList({ fournisseurs }: { fournisseurs: Fournisseur[] }) {
           </thead>
           <tbody>
             {filtered.map((f) => (
-              <tr key={f.id} className="border-b border-neutral-900">
+              <tr key={f.id} className="border-b border-line">
                 <td className="py-2">
                   <Link href={`/orbit/${f.id}`} className="font-medium hover:underline">
                     {f.nom}
                   </Link>
                 </td>
-                <td className="text-neutral-400">
+                <td className="text-muted">
                   <EditableField
                     value={f.categorie ?? ''}
                     onSave={updateFournisseurField.bind(null, f.id, 'categorie')}
@@ -93,7 +91,7 @@ export function OrbitList({ fournisseurs }: { fournisseurs: Fournisseur[] }) {
                     options={categorieOptions}
                   />
                 </td>
-                <td className="text-neutral-400">{f.contact ?? f.email ?? '—'}</td>
+                <td className="text-muted">{f.contact ?? f.email ?? '—'}</td>
                 <td>
                   <DeleteButton
                     action={deleteFournisseur.bind(null, f.id)}

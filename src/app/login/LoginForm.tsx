@@ -33,12 +33,12 @@ export function LoginForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-sm space-y-4 rounded-lg border border-neutral-800 p-8"
+      className="w-full max-w-sm space-y-4 rounded-lg border border-line p-8"
     >
       <h1 className="text-lg font-medium">Matn</h1>
 
       <div className="space-y-1">
-        <label htmlFor="email" className="text-sm text-neutral-400">
+        <label htmlFor="email" className="text-sm text-muted">
           Email
         </label>
         <input
@@ -47,12 +47,12 @@ export function LoginForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm"
+          className="w-full rounded-md border border-line bg-transparent px-3 py-2 text-sm"
         />
       </div>
 
       <div className="space-y-1">
-        <label htmlFor="password" className="text-sm text-neutral-400">
+        <label htmlFor="password" className="text-sm text-muted">
           Mot de passe
         </label>
         <input
@@ -61,7 +61,7 @@ export function LoginForm() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm"
+          className="w-full rounded-md border border-line bg-transparent px-3 py-2 text-sm"
         />
       </div>
 
@@ -70,7 +70,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-md bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-950 disabled:opacity-50"
+        className="w-full rounded-md bg-fg px-3 py-2 text-sm font-medium text-bg disabled:opacity-50"
       >
         {loading ? 'Connexion…' : 'Se connecter'}
       </button>

@@ -1,14 +1,13 @@
 import { createClient } from '../actions';
 import { TRACK_LABELS, TYPE_ORGANISATION_LABELS } from '@/lib/labels';
 
-const inputClass =
-  'mt-1 w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm';
-const labelClass = 'text-sm text-neutral-400';
+const inputClass = 'mt-1 w-full border border-line bg-bg px-3 py-2 text-sm text-fg focus:outline-none focus:border-accent';
+const labelClass = 'text-sm text-muted';
 
 export default function NewClientPage() {
   return (
     <div className="max-w-md">
-      <h1 className="text-xl font-medium">Nouveau client</h1>
+      <h1 className="font-display text-2xl">Nouveau client</h1>
       <form action={createClient} className="mt-6 space-y-4">
         <div>
           <label className={labelClass}>Nom</label>
@@ -39,10 +38,7 @@ export default function NewClientPage() {
           <label className={labelClass}>Secteur</label>
           <input name="secteur" className={inputClass} />
         </div>
-        <button
-          type="submit"
-          className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950"
-        >
+        <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
           Créer
         </button>
       </form>

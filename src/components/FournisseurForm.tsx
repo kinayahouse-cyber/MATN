@@ -1,14 +1,13 @@
 import { createFournisseur } from '@/app/(app)/orbit/actions';
 import { CATEGORIE_FOURNISSEUR_LABELS } from '@/lib/labels';
 
-const inputClass =
-  'mt-1 w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm';
-const labelClass = 'text-sm text-neutral-400';
+const inputClass = 'mt-1 w-full border border-line bg-bg px-3 py-2 text-sm text-fg focus:outline-none focus:border-accent';
+const labelClass = 'text-sm text-muted';
 
 export function FournisseurForm() {
   return (
     <div className="max-w-md">
-      <h1 className="text-xl font-medium">Nouveau fournisseur</h1>
+      <h1 className="font-display text-2xl">Nouveau fournisseur</h1>
       <form action={createFournisseur} className="mt-6 space-y-4">
         <div>
           <label className={labelClass}>Nom</label>
@@ -41,10 +40,7 @@ export function FournisseurForm() {
           <label className={labelClass}>Notes</label>
           <textarea name="notes" rows={3} className={inputClass} />
         </div>
-        <button
-          type="submit"
-          className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950"
-        >
+        <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
           Créer
         </button>
       </form>

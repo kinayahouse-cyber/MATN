@@ -71,8 +71,8 @@ const typeAssetOptions = Object.entries(TYPE_ASSET_LABELS).map(([value, label]) 
 }));
 
 const inputClass =
-  'mt-1 w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm';
-const labelClass = 'text-sm text-neutral-400';
+  'mt-1 w-full rounded-md border border-line bg-transparent px-3 py-2 text-sm';
+const labelClass = 'text-sm text-muted';
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(
@@ -165,22 +165,22 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
       {/* Overview / Description */}
       <section className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <div>
-          <p className="text-xs uppercase tracking-wide text-neutral-500">Overview</p>
+          <p className="text-xs uppercase tracking-wide text-muted">Overview</p>
           <h2 className="mt-2 text-lg font-medium">Description</h2>
           <EditableField
             value={projet.description ?? ''}
             onSave={updateProjetField.bind(null, projet.id, 'description')}
             type="textarea"
             placeholder="Aucune description."
-            className="mt-2 text-sm text-neutral-400"
+            className="mt-2 text-sm text-muted"
           />
 
           {/* Scopes : contenu non encore modélisé (ADR-009) — placeholder */}
-          <p className="mt-6 text-xs uppercase tracking-wide text-neutral-500">Scopes</p>
-          <p className="mt-1 text-sm text-neutral-600">À définir.</p>
+          <p className="mt-6 text-xs uppercase tracking-wide text-muted">Scopes</p>
+          <p className="mt-1 text-sm text-muted">À définir.</p>
 
           <div className="mt-4">
-            <p className="text-xs uppercase tracking-wide text-neutral-500">
+            <p className="text-xs uppercase tracking-wide text-muted">
               Type d&rsquo;engagement
             </p>
             <EditableField
@@ -188,13 +188,13 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               onSave={updateProjetField.bind(null, projet.id, 'engagement')}
               type="select"
               options={engagementOptions}
-              className="mt-1 text-sm text-neutral-400"
+              className="mt-1 text-sm text-muted"
             />
           </div>
 
           <div className="mt-4 flex gap-6 text-sm">
             <div>
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Budget</p>
+              <p className="text-xs uppercase tracking-wide text-muted">Budget</p>
               <EditableField
                 value={budgetRaw}
                 displayValue={budget ?? undefined}
@@ -204,7 +204,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Budget interne</p>
+              <p className="text-xs uppercase tracking-wide text-muted">Budget interne</p>
               <EditableField
                 value={budgetInterneRaw}
                 displayValue={budgetInterne ?? undefined}
@@ -217,7 +217,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
           <div className="mt-4 flex gap-6 text-sm">
             <div>
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Début</p>
+              <p className="text-xs uppercase tracking-wide text-muted">Début</p>
               <EditableField
                 value={dateDebutRaw}
                 onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
@@ -226,7 +226,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Fin prévue</p>
+              <p className="text-xs uppercase tracking-wide text-muted">Fin prévue</p>
               <EditableField
                 value={dateFinPrevueRaw}
                 onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
@@ -237,17 +237,17 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        <div className="flex items-start justify-between border-t border-neutral-800 pt-4 md:border-l md:border-t-0 md:pl-8 md:pt-0">
+        <div className="flex items-start justify-between border-t border-line pt-4 md:border-l md:border-t-0 md:pl-8 md:pt-0">
           <div className="flex-1">
             <EditableField
               value={projet.nom}
               onSave={updateProjetField.bind(null, projet.id, 'nom')}
-              className="text-xl font-medium"
+              className="font-display text-2xl"
             />
             {projet.organisation && (
               <Link
                 href={`/clients/${projet.organisation.id}`}
-                className="mt-1 block text-sm text-neutral-400 hover:underline"
+                className="mt-1 block text-sm text-muted hover:underline"
               >
                 {projet.organisation.nom}
               </Link>
@@ -259,13 +259,13 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               onSave={updateProjetField.bind(null, projet.id, 'stade')}
               type="select"
               options={stadeOptions}
-              className="rounded-full border border-neutral-800 px-3 py-1 text-xs"
+              className="rounded-full border border-line px-3 py-1 text-xs"
             />
             <DeleteButton
               action={deleteProjet.bind(null, projet.id)}
               confirmMessage={`Supprimer le projet ${projet.nom} ? Jalons, fichiers, tâches et dépenses associés seront aussi supprimés.`}
               label="Supprimer le projet"
-              className="text-xs text-neutral-600 hover:text-red-400"
+              className="text-xs text-muted hover:text-accent"
             />
           </div>
         </div>
@@ -273,11 +273,11 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
       {/* Label — champs propres au track LABEL (ADR-008) */}
       {projet.track === 'LABEL' && (
-        <section className="border-t border-neutral-800 pt-4">
-          <p className="text-xs uppercase tracking-wide text-neutral-500">Label</p>
+        <section className="border-t border-line pt-4">
+          <p className="text-xs uppercase tracking-wide text-muted">Label</p>
           <div className="mt-2 grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
             <div>
-              <p className="text-xs uppercase tracking-wide text-neutral-500">
+              <p className="text-xs uppercase tracking-wide text-muted">
                 Stade production
               </p>
               <EditableField
@@ -289,7 +289,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Format</p>
+              <p className="text-xs uppercase tracking-wide text-muted">Format</p>
               <EditableField
                 value={projet.format ?? ''}
                 onSave={updateProjetField.bind(null, projet.id, 'format')}
@@ -297,7 +297,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-neutral-500">
+              <p className="text-xs uppercase tracking-wide text-muted">
                 Statut diffusion
               </p>
               <EditableField
@@ -311,16 +311,16 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
       )}
 
       {/* Contacts liés (relation directe Contact<->Projet, ADR-006 pt.5) */}
-      <section className="border-t border-neutral-800 pt-4">
+      <section className="border-t border-line pt-4">
         <h2 className="text-sm font-medium uppercase tracking-wide">Contacts</h2>
         {projet.contacts.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-600">Aucun contact lié.</p>
+          <p className="mt-3 text-sm text-muted">Aucun contact lié.</p>
         ) : (
           <ul className="mt-3 flex flex-wrap gap-2">
             {projet.contacts.map((contact) => (
               <li
                 key={contact.id}
-                className="flex items-center gap-2 rounded-full border border-neutral-800 px-3 py-1 text-sm"
+                className="flex items-center gap-2 rounded-full border border-line px-3 py-1 text-sm"
               >
                 {contact.organisationId ? (
                   <Link href={`/clients/${contact.organisationId}`} className="hover:underline">
@@ -345,9 +345,9 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         <section>
           <h2 className="text-sm font-medium uppercase tracking-wide">Jalons</h2>
           {projet.jalons.length === 0 ? (
-            <p className="mt-3 text-sm text-neutral-600">Aucun jalon.</p>
+            <p className="mt-3 text-sm text-muted">Aucun jalon.</p>
           ) : (
-            <ul className="mt-3 space-y-2 border-l border-neutral-800 pl-4">
+            <ul className="mt-3 space-y-2 border-l border-line pl-4">
               {projet.jalons.map((jalon) => (
                 <li key={jalon.id} className="flex items-center gap-2 text-sm">
                   <JalonAtteintCheckbox id={jalon.id} atteint={jalon.atteint} />
@@ -355,7 +355,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                     value={jalon.date.toISOString().slice(0, 10)}
                     onSave={updateJalonField.bind(null, jalon.id, 'date')}
                     type="date"
-                    className="w-28 shrink-0 text-neutral-500"
+                    className="w-28 shrink-0 text-muted"
                   />
                   <EditableField
                     value={jalon.libelle}
@@ -369,7 +369,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           )}
 
           <details className="mt-4">
-            <summary className="cursor-pointer text-sm text-neutral-500 hover:text-neutral-300">
+            <summary className="cursor-pointer text-sm text-muted hover:text-fg">
               + Ajouter un jalon
             </summary>
             <form action={addJalon} className="mt-3 space-y-3">
@@ -384,7 +384,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               </div>
               <button
                 type="submit"
-                className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950"
+                className="rounded-md bg-fg px-4 py-2 text-sm font-medium text-bg"
               >
                 Ajouter
               </button>
@@ -396,9 +396,9 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         <section>
           <h2 className="text-sm font-medium uppercase tracking-wide">Files</h2>
           {projet.documents.length === 0 ? (
-            <p className="mt-3 text-sm text-neutral-600">Aucun document.</p>
+            <p className="mt-3 text-sm text-muted">Aucun document.</p>
           ) : (
-            <ul className="mt-3 divide-y divide-neutral-800">
+            <ul className="mt-3 divide-y divide-line">
               {projet.documents.map((doc) => (
                 <li key={doc.id} className="py-2 text-sm">
                   <div className="flex items-center gap-2">
@@ -420,24 +420,24 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                       onSave={updateDocumentField.bind(null, doc.id, 'statut')}
                       type="select"
                       options={statutDocumentOptions}
-                      className="w-28 shrink-0 text-xs text-neutral-500"
+                      className="w-28 shrink-0 text-xs text-muted"
                     />
                     <DeleteButton action={deleteDocument.bind(null, doc.id)} />
                   </div>
                   <div className="mt-1 flex items-center gap-2 pl-1">
-                    <span className="text-xs text-neutral-600">Lien :</span>
+                    <span className="text-xs text-muted">Lien :</span>
                     <EditableField
                       value={doc.url ?? ''}
                       onSave={updateDocumentField.bind(null, doc.id, 'url')}
                       placeholder="https://…"
-                      className="flex-1 text-xs text-neutral-500"
+                      className="flex-1 text-xs text-muted"
                     />
                     {documentUrlById.get(doc.id) && (
                       <a
                         href={documentUrlById.get(doc.id)!}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs text-neutral-500 hover:underline"
+                        className="text-xs text-muted hover:underline"
                       >
                         Ouvrir
                       </a>
@@ -449,7 +449,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           )}
 
           <details className="mt-4">
-            <summary className="cursor-pointer text-sm text-neutral-500 hover:text-neutral-300">
+            <summary className="cursor-pointer text-sm text-muted hover:text-fg">
               + Ajouter un fichier
             </summary>
             <form action={addDocument} className="mt-3 space-y-3">
@@ -471,7 +471,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               <div>
                 <label className={labelClass}>Fichier</label>
                 <input name="file" type="file" className={inputClass} />
-                <p className="mt-1 text-xs text-neutral-600">
+                <p className="mt-1 text-xs text-muted">
                   Uploadé dans le stockage MATN. Sinon, colle un lien externe (Drive, etc.)
                   ci-dessous.
                 </p>
@@ -482,7 +482,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               </div>
               <button
                 type="submit"
-                className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950"
+                className="rounded-md bg-fg px-4 py-2 text-sm font-medium text-bg"
               >
                 Ajouter
               </button>
@@ -492,16 +492,16 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Assets (images, vidéos, sons — stockage MATN) */}
-      <section className="border-t border-neutral-800 pt-4">
+      <section className="border-t border-line pt-4">
         <h2 className="text-sm font-medium uppercase tracking-wide">Assets</h2>
         {projet.assets.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-600">Aucun asset.</p>
+          <p className="mt-3 text-sm text-muted">Aucun asset.</p>
         ) : (
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {projet.assets.map((asset) => {
               const resolvedUrl = assetUrlById.get(asset.id);
               return (
-                <div key={asset.id} className="rounded-md border border-neutral-800 p-2">
+                <div key={asset.id} className="rounded-md border border-line p-2">
                   {asset.type === 'IMAGE' && resolvedUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -510,7 +510,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                       className="h-24 w-full rounded object-cover"
                     />
                   ) : (
-                    <div className="flex h-24 w-full items-center justify-center rounded bg-neutral-900 text-xs text-neutral-600">
+                    <div className="flex h-24 w-full items-center justify-center rounded bg-line/40 text-xs text-muted">
                       {TYPE_ASSET_LABELS[asset.type] ?? asset.type}
                     </div>
                   )}
@@ -525,12 +525,12 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                       onSave={updateAssetField.bind(null, asset.id, 'type')}
                       type="select"
                       options={typeAssetOptions}
-                      className="text-xs text-neutral-500"
+                      className="text-xs text-muted"
                     />
                     <DeleteButton action={deleteAsset.bind(null, asset.id)} />
                   </div>
                   {asset.sourceGenerateurIa && (
-                    <span className="mt-1 inline-block rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] uppercase text-neutral-400">
+                    <span className="mt-1 inline-block bg-line px-2 py-0.5 text-[10px] uppercase text-muted">
                       IA
                     </span>
                   )}
@@ -539,7 +539,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                       href={resolvedUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-1 block text-xs text-neutral-500 hover:underline"
+                      className="mt-1 block text-xs text-muted hover:underline"
                     >
                       Ouvrir
                     </a>
@@ -551,7 +551,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         )}
 
         <details className="mt-4">
-          <summary className="cursor-pointer text-sm text-neutral-500 hover:text-neutral-300">
+          <summary className="cursor-pointer text-sm text-muted hover:text-fg">
             + Ajouter un asset
           </summary>
           <form action={addAsset} className="mt-3 space-y-3">
@@ -574,13 +574,13 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               <label className={labelClass}>Fichier</label>
               <input name="file" type="file" required className={inputClass} />
             </div>
-            <label className="flex items-center gap-2 text-sm text-neutral-400">
+            <label className="flex items-center gap-2 text-sm text-muted">
               <input type="checkbox" name="sourceGenerateurIa" />
               Généré par IA
             </label>
             <button
               type="submit"
-              className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950"
+              className="rounded-md bg-fg px-4 py-2 text-sm font-medium text-bg"
             >
               Ajouter
             </button>
@@ -594,7 +594,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           <h2 className="text-sm font-medium uppercase tracking-wide">Tâches</h2>
           <table className="mt-3 w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-800 text-xs uppercase text-neutral-500">
+              <tr className="border-b border-line text-xs uppercase text-muted">
                 <th className="w-6 pb-1 font-normal" />
                 <th className="pb-1 font-normal">Libellé</th>
                 <th className="pb-1 font-normal">Statut</th>
@@ -605,7 +605,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
             </thead>
             <tbody>
               {projet.taches.map((t) => (
-                <tr key={t.id} className="border-b border-neutral-900 align-top">
+                <tr key={t.id} className="border-b border-line align-top">
                   <td className="py-2">
                     <TacheDoneCheckbox id={t.id} statut={t.statut} />
                   </td>
@@ -613,17 +613,17 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                     <EditableField
                       value={t.libelle}
                       onSave={updateTacheField.bind(null, t.id, 'libelle')}
-                      className={t.statut === 'FAIT' ? 'text-neutral-500 line-through' : ''}
+                      className={t.statut === 'FAIT' ? 'text-muted line-through' : ''}
                     />
                     <EditableField
                       value={t.description ?? ''}
                       onSave={updateTacheField.bind(null, t.id, 'description')}
                       type="textarea"
                       placeholder="Description —"
-                      className="text-xs text-neutral-500"
+                      className="text-xs text-muted"
                     />
                   </td>
-                  <td className="py-1 text-neutral-400">
+                  <td className="py-1 text-muted">
                     <EditableField
                       value={t.statut}
                       onSave={updateTacheField.bind(null, t.id, 'statut')}
@@ -631,14 +631,14 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                       options={statutTacheOptions}
                     />
                   </td>
-                  <td className="py-1 text-neutral-400">
+                  <td className="py-1 text-muted">
                     <EditableField
                       value={t.echeance ? t.echeance.toISOString().slice(0, 10) : ''}
                       onSave={updateTacheField.bind(null, t.id, 'echeance')}
                       type="date"
                     />
                   </td>
-                  <td className="py-1 text-neutral-400">
+                  <td className="py-1 text-muted">
                     <EditableField
                       value={t.assigneAId ?? ''}
                       onSave={updateTacheField.bind(null, t.id, 'assigneAId')}
@@ -664,7 +664,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           <div className="flex items-baseline justify-between">
             <h2 className="text-sm font-medium uppercase tracking-wide">Dépenses</h2>
             {totalDepenses > 0 && (
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-muted">
                 Total : {formatMontant(totalDepenses)}
                 {budget && ` / ${budget}`}
               </span>
@@ -672,7 +672,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           </div>
           <table className="mt-3 w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-800 text-xs uppercase text-neutral-500">
+              <tr className="border-b border-line text-xs uppercase text-muted">
                 <th className="pb-1 font-normal">Catégorie</th>
                 <th className="pb-1 font-normal">Montant</th>
                 <th className="pb-1 font-normal">Date</th>
@@ -681,21 +681,21 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
             </thead>
             <tbody>
               {projet.depenses.map((d) => (
-                <tr key={d.id} className="border-b border-neutral-900">
+                <tr key={d.id} className="border-b border-line">
                   <td className="py-1">
                     <EditableField
                       value={d.categorie}
                       onSave={updateDepenseField.bind(null, d.id, 'categorie')}
                     />
                   </td>
-                  <td className="py-1 tabular-nums text-neutral-400">
+                  <td className="py-1 tabular-nums text-muted">
                     <EditableField
                       value={String(d.montant)}
                       onSave={updateDepenseField.bind(null, d.id, 'montant')}
                       type="number"
                     />
                   </td>
-                  <td className="py-1 text-neutral-400">
+                  <td className="py-1 text-muted">
                     <EditableField
                       value={d.date.toISOString().slice(0, 10)}
                       onSave={updateDepenseField.bind(null, d.id, 'date')}
@@ -714,7 +714,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Timeline du cycle commercial */}
-      <section className="border-t border-neutral-800 pt-6">
+      <section className="border-t border-line pt-6">
         <div className="flex items-center justify-between">
           {STADE_ORDER.map((stade, i) => (
             <div key={stade} className="flex flex-1 items-center">
@@ -723,37 +723,37 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                   className={
                     'h-2.5 w-2.5 rounded-full ' +
                     (i < stadeIndex
-                      ? 'bg-neutral-100'
+                      ? 'bg-fg'
                       : i === stadeIndex
-                        ? 'bg-orange-500'
-                        : 'border border-neutral-700')
+                        ? 'bg-accent'
+                        : 'border border-line')
                   }
                 />
-                <span className="text-xs text-neutral-500">{STADE_PROJET_LABELS[stade]}</span>
+                <span className="text-xs text-muted">{STADE_PROJET_LABELS[stade]}</span>
               </div>
-              {i < STADE_ORDER.length - 1 && <div className="mx-2 h-px flex-1 bg-neutral-800" />}
+              {i < STADE_ORDER.length - 1 && <div className="mx-2 h-px flex-1 bg-line" />}
             </div>
           ))}
         </div>
         {projet.stade === 'ABANDONNE' && (
-          <p className="mt-3 text-sm text-red-400">Projet abandonné.</p>
+          <p className="mt-3 text-sm text-accent">Projet abandonné.</p>
         )}
       </section>
 
       {/* Capture — Décisions / Notes récentes */}
-      <section className="grid grid-cols-1 gap-3 border-t border-neutral-800 pt-6 sm:grid-cols-4">
+      <section className="grid grid-cols-1 gap-3 border-t border-line pt-6 sm:grid-cols-4">
         {feed.map((entry) => (
-          <div key={`${entry.kind}-${entry.id}`} className="rounded-md border border-neutral-800 p-3">
-            <span className="rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] uppercase text-neutral-400">
+          <div key={`${entry.kind}-${entry.id}`} className="rounded-md border border-line p-3">
+            <span className="bg-line px-2 py-0.5 text-[10px] uppercase text-muted">
               {entry.kind}
             </span>
             <p className="mt-2 text-sm font-medium">{entry.titre}</p>
-            <p className="mt-1 text-xs text-neutral-500">{timeAgo(entry.date)}</p>
+            <p className="mt-1 text-xs text-muted">{timeAgo(entry.date)}</p>
           </div>
         ))}
         <div className="space-y-2">
-          <details className="rounded-md border border-dashed border-neutral-700 p-3">
-            <summary className="cursor-pointer text-sm text-neutral-400 hover:text-neutral-100">
+          <details className="rounded-md border border-dashed border-line p-3">
+            <summary className="cursor-pointer text-sm text-muted hover:text-fg">
               + Décision
             </summary>
             <form action={addDecision} className="mt-3 space-y-2">
@@ -767,7 +767,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                 className={inputClass}
               />
               <details>
-                <summary className="cursor-pointer text-xs text-neutral-600 hover:text-neutral-400">
+                <summary className="cursor-pointer text-xs text-muted hover:text-muted">
                   + Contexte / options écartées
                 </summary>
                 <textarea
@@ -785,15 +785,15 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               </details>
               <button
                 type="submit"
-                className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-950"
+                className="rounded-md bg-fg px-3 py-1.5 text-xs font-medium text-bg"
               >
                 Logger
               </button>
             </form>
           </details>
 
-          <details className="rounded-md border border-dashed border-neutral-700 p-3">
-            <summary className="cursor-pointer text-sm text-neutral-400 hover:text-neutral-100">
+          <details className="rounded-md border border-dashed border-line p-3">
+            <summary className="cursor-pointer text-sm text-muted hover:text-fg">
               + Note
             </summary>
             <form action={addNote} className="mt-3 space-y-2">
@@ -802,7 +802,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               <input name="tag" placeholder="Tag (optionnel)" className={inputClass} />
               <button
                 type="submit"
-                className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-950"
+                className="rounded-md bg-fg px-3 py-1.5 text-xs font-medium text-bg"
               >
                 Ajouter
               </button>

@@ -11,10 +11,10 @@ import {
 } from '../actions';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
+import { StructuralLine } from '@/components/grid/StructuralLine';
 
-const inputClass =
-  'mt-1 w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm';
-const labelClass = 'text-sm text-neutral-400';
+const inputClass = 'mt-1 w-full border border-line bg-bg px-3 py-2 text-sm text-fg focus:outline-none focus:border-accent';
+const labelClass = 'text-sm text-muted';
 
 const typeOptions = Object.entries(TYPE_ORGANISATION_LABELS).map(([value, label]) => ({
   value,
@@ -44,16 +44,16 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           <EditableField
             value={client.nom}
             onSave={updateOrganisationField.bind(null, client.id, 'nom')}
-            className="flex-1 text-xl font-medium"
+            className="flex-1 font-display text-2xl"
           />
           <DeleteButton
             action={deleteOrganisation.bind(null, client.id)}
             confirmMessage={`Supprimer ${client.nom} ? Les projets liés seront détachés, pas supprimés.`}
             label="Supprimer"
-            className="mt-1 shrink-0 text-xs text-neutral-600 hover:text-red-400"
+            className="mt-1 shrink-0 text-xs text-muted hover:text-accent"
           />
         </div>
-        <div className="mt-2 flex flex-wrap gap-4 text-sm text-neutral-400">
+        <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted">
           <EditableField
             value={client.type}
             onSave={updateOrganisationField.bind(null, client.id, 'type')}
@@ -74,11 +74,12 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           />
         </div>
       </div>
+      <StructuralLine weight="primary" />
 
-      <section className="grid grid-cols-2 gap-4 border-t border-neutral-800 pt-4 text-sm sm:grid-cols-3 md:grid-cols-6">
+      <section className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3 md:grid-cols-6">
         {(['nif', 'nis', 'rc', 'ai', 'rib'] as const).map((field) => (
           <div key={field}>
-            <p className="text-xs uppercase tracking-wide text-neutral-500">{field.toUpperCase()}</p>
+            <p className="text-xs uppercase tracking-wide text-muted">{field.toUpperCase()}</p>
             <EditableField
               value={client[field] ?? ''}
               onSave={updateOrganisationField.bind(null, client.id, field)}
@@ -88,12 +89,12 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         ))}
       </section>
       <div>
-        <p className="text-xs uppercase tracking-wide text-neutral-500">Notes</p>
+        <p className="text-xs uppercase tracking-wide text-muted">Notes</p>
         <EditableField
           value={client.notes ?? ''}
           onSave={updateOrganisationField.bind(null, client.id, 'notes')}
           type="textarea"
-          className="mt-1 text-sm text-neutral-400"
+          className="mt-1 text-sm text-muted"
         />
       </div>
 
@@ -101,9 +102,9 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         <section>
           <h2 className="text-sm font-medium uppercase tracking-wide">Contacts</h2>
           {client.contacts.length === 0 ? (
-            <p className="mt-3 text-sm text-neutral-600">Aucun contact.</p>
+            <p className="mt-3 text-sm text-muted">Aucun contact.</p>
           ) : (
-            <ul className="mt-3 divide-y divide-neutral-800">
+            <ul className="mt-3 divide-y divide-line">
               {client.contacts.map((contact) => (
                 <li key={contact.id} className="py-2 text-sm">
                   <div className="flex items-start justify-between gap-2">
@@ -117,7 +118,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
                       confirmMessage={`Supprimer le contact ${contact.nom} ?`}
                     />
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-3 text-xs text-neutral-500">
+                  <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted">
                     <EditableField
                       value={contact.role ?? ''}
                       onSave={updateContactField.bind(null, contact.id, 'role')}
@@ -135,7 +136,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
                     />
                   </div>
                   {contact.projets.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-neutral-600">
+                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-line-strong">
                       {contact.projets.map((p) => (
                         <Link key={p.id} href={`/projets/${p.id}`} className="hover:underline">
                           {p.nom}
@@ -149,7 +150,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           )}
 
           <details className="mt-4">
-            <summary className="cursor-pointer text-sm text-neutral-500 hover:text-neutral-300">
+            <summary className="cursor-pointer text-sm text-muted hover:text-fg">
               + Ajouter un contact
             </summary>
             <form action={createContact} className="mt-3 space-y-3">
@@ -170,10 +171,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
                 <label className={labelClass}>Téléphone</label>
                 <input name="telephone" className={inputClass} />
               </div>
-              <button
-                type="submit"
-                className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950"
-              >
+              <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
                 Ajouter
               </button>
             </form>
@@ -183,15 +181,15 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         <section>
           <h2 className="text-sm font-medium uppercase tracking-wide">Projets</h2>
           {client.projets.length === 0 ? (
-            <p className="mt-3 text-sm text-neutral-600">Aucun projet.</p>
+            <p className="mt-3 text-sm text-muted">Aucun projet.</p>
           ) : (
-            <ul className="mt-3 divide-y divide-neutral-800">
+            <ul className="mt-3 divide-y divide-line">
               {client.projets.map((p) => (
                 <li key={p.id} className="flex items-center justify-between py-2 text-sm">
                   <Link href={`/projets/${p.id}`} className="hover:underline">
                     {p.nom}
                   </Link>
-                  <span className="text-xs text-neutral-500">
+                  <span className="text-xs text-muted">
                     {STADE_PROJET_LABELS[p.stade] ?? p.stade}
                   </span>
                 </li>
@@ -201,15 +199,16 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         </section>
       </div>
 
-      <section className="border-t border-neutral-800 pt-6">
+      <section>
+        <StructuralLine weight="primary" className="mb-6" />
         <h2 className="text-sm font-medium uppercase tracking-wide">Décisions &amp; Notes récentes</h2>
         {client.decisions.length === 0 && client.notesMatn.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-600">Rien pour l&rsquo;instant.</p>
+          <p className="mt-3 text-sm text-muted">Rien pour l&rsquo;instant.</p>
         ) : (
           <ul className="mt-3 space-y-2">
             {client.decisions.map((d) => (
               <li key={d.id} className="text-sm">
-                <span className="mr-2 rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] uppercase text-neutral-400">
+                <span className="mr-2 text-[10px] uppercase tracking-wide text-line-strong">
                   Décision
                 </span>
                 {d.intitule}
@@ -217,7 +216,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
             ))}
             {client.notesMatn.map((n) => (
               <li key={n.id} className="text-sm">
-                <span className="mr-2 rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] uppercase text-neutral-400">
+                <span className="mr-2 text-[10px] uppercase tracking-wide text-line-strong">
                   Note
                 </span>
                 {n.titre ?? n.contenu.slice(0, 80)}

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { TYPE_DOCUMENT_LABELS, STATUT_DOCUMENT_LABELS } from '@/lib/labels';
+import { PageHeader } from '@/components/PageHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,18 +26,18 @@ export default async function KnowledgeHubPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-xl font-medium">Knowledge Hub</h1>
+      <PageHeader title="Knowledge Hub" />
 
       <section>
         <h2 className="text-sm font-medium uppercase tracking-wide">Décisions</h2>
         {decisions.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-600">Aucune décision.</p>
+          <p className="mt-3 text-sm text-muted">Aucune décision.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-neutral-800">
+          <ul className="mt-3 divide-y divide-line">
             {decisions.map((d) => (
               <li key={d.id} className="py-2 text-sm">
                 <p className="font-medium">{d.intitule}</p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-muted">
                   {d.projet ? (
                     <Link href={`/projets/${d.projet.id}`} className="hover:underline">
                       {d.projet.nom}
@@ -58,13 +59,13 @@ export default async function KnowledgeHubPage() {
       <section>
         <h2 className="text-sm font-medium uppercase tracking-wide">Notes</h2>
         {notes.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-600">Aucune note.</p>
+          <p className="mt-3 text-sm text-muted">Aucune note.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-neutral-800">
+          <ul className="mt-3 divide-y divide-line">
             {notes.map((n) => (
               <li key={n.id} className="py-2 text-sm">
                 <p className="font-medium">{n.titre ?? n.contenu.slice(0, 80)}</p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-muted">
                   {n.projet ? (
                     <Link href={`/projets/${n.projet.id}`} className="hover:underline">
                       {n.projet.nom}
@@ -87,14 +88,14 @@ export default async function KnowledgeHubPage() {
       <section>
         <h2 className="text-sm font-medium uppercase tracking-wide">Documents</h2>
         {documents.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-600">Aucun document.</p>
+          <p className="mt-3 text-sm text-muted">Aucun document.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-neutral-800">
+          <ul className="mt-3 divide-y divide-line">
             {documents.map((doc) => (
               <li key={doc.id} className="flex items-center justify-between py-2 text-sm">
                 <div>
                   <p className="font-medium">{doc.numero ?? TYPE_DOCUMENT_LABELS[doc.type]}</p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-muted">
                     {doc.projet ? (
                       <Link href={`/projets/${doc.projet.id}`} className="hover:underline">
                         {doc.projet.nom}
@@ -108,7 +109,7 @@ export default async function KnowledgeHubPage() {
                     )}
                   </p>
                 </div>
-                <span className="text-xs text-neutral-500">
+                <span className="text-xs text-muted">
                   {STATUT_DOCUMENT_LABELS[doc.statut] ?? doc.statut}
                 </span>
               </li>

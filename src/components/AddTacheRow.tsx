@@ -35,7 +35,7 @@ export function AddTacheRow({
   };
 
   const cellInputClass =
-    'w-full rounded border border-neutral-700 bg-neutral-950 px-1.5 py-1 text-sm focus:outline-none focus:border-neutral-500';
+    'w-full rounded border border-line bg-bg px-1.5 py-1 text-sm focus:outline-none focus:border-accent';
 
   if (!open) {
     return (
@@ -44,7 +44,7 @@ export function AddTacheRow({
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="text-sm text-neutral-500 hover:text-neutral-300"
+            className="text-sm text-muted hover:text-fg"
           >
             + Ajouter une tâche
           </button>
@@ -54,7 +54,7 @@ export function AddTacheRow({
   }
 
   return (
-    <tr className="border-b border-neutral-900">
+    <tr className="border-b border-line">
       <td />
       <td className="py-1">
         <input
@@ -72,7 +72,7 @@ export function AddTacheRow({
           className={cellInputClass}
         />
       </td>
-      <td className="py-1 text-xs text-neutral-600">À faire</td>
+      <td className="py-1 text-xs text-muted">À faire</td>
       <td className="py-1">
         <input
           type="date"
@@ -99,7 +99,7 @@ export function AddTacheRow({
             type="button"
             onClick={submit}
             disabled={pending || !libelle.trim()}
-            className="whitespace-nowrap rounded bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-950 disabled:opacity-40"
+            className="whitespace-nowrap rounded bg-fg px-2 py-1 text-xs font-medium text-bg disabled:opacity-40"
           >
             Ajouter
           </button>
@@ -109,7 +109,7 @@ export function AddTacheRow({
               setOpen(false);
               reset();
             }}
-            className="text-xs text-neutral-500 hover:text-neutral-300"
+            className="text-xs text-muted hover:text-fg"
           >
             Annuler
           </button>

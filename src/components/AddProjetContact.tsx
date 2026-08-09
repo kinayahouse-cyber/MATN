@@ -30,7 +30,7 @@ export function AddProjetContact({
       <select
         value={contactId}
         onChange={(e) => setContactId(e.target.value)}
-        className="rounded border border-neutral-700 bg-neutral-950 px-1.5 py-1 text-sm"
+        className="border border-line bg-bg px-1.5 py-1 text-sm text-fg focus:outline-none focus:border-accent"
       >
         <option value="">+ Lier un contact</option>
         {contacts.map((c) => (
@@ -44,7 +44,7 @@ export function AddProjetContact({
         type="button"
         onClick={submit}
         disabled={!contactId || pending}
-        className="rounded bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-950 disabled:opacity-40"
+        className="bg-fg px-2 py-1 text-xs font-medium text-bg disabled:opacity-40"
       >
         Lier
       </button>

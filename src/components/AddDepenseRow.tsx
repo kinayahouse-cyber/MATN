@@ -25,7 +25,7 @@ export function AddDepenseRow({ projetId }: { projetId: string }) {
   };
 
   const cellInputClass =
-    'w-full rounded border border-neutral-700 bg-neutral-950 px-1.5 py-1 text-sm focus:outline-none focus:border-neutral-500';
+    'w-full rounded border border-line bg-bg px-1.5 py-1 text-sm focus:outline-none focus:border-accent';
 
   if (!open) {
     return (
@@ -34,7 +34,7 @@ export function AddDepenseRow({ projetId }: { projetId: string }) {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="text-sm text-neutral-500 hover:text-neutral-300"
+            className="text-sm text-muted hover:text-fg"
           >
             + Ajouter une dépense
           </button>
@@ -44,7 +44,7 @@ export function AddDepenseRow({ projetId }: { projetId: string }) {
   }
 
   return (
-    <tr className="border-b border-neutral-900">
+    <tr className="border-b border-line">
       <td className="py-1">
         <input
           ref={categorieRef}
@@ -77,7 +77,7 @@ export function AddDepenseRow({ projetId }: { projetId: string }) {
             type="button"
             onClick={submit}
             disabled={pending || !categorie.trim() || !montant.trim()}
-            className="rounded bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-950 disabled:opacity-40"
+            className="rounded bg-fg px-2 py-1 text-xs font-medium text-bg disabled:opacity-40"
           >
             Ajouter
           </button>
@@ -87,7 +87,7 @@ export function AddDepenseRow({ projetId }: { projetId: string }) {
               setOpen(false);
               reset();
             }}
-            className="text-xs text-neutral-500 hover:text-neutral-300"
+            className="text-xs text-muted hover:text-fg"
           >
             Annuler
           </button>

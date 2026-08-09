@@ -16,19 +16,19 @@ export function FournisseurDetail({ fournisseur }: { fournisseur: Fournisseur })
         <EditableField
           value={fournisseur.nom}
           onSave={updateFournisseurField.bind(null, fournisseur.id, 'nom')}
-          className="flex-1 text-xl font-medium"
+          className="flex-1 font-display text-2xl"
         />
         <DeleteButton
           action={deleteFournisseur.bind(null, fournisseur.id)}
           confirmMessage={`Supprimer ${fournisseur.nom} ?`}
           label="Supprimer"
-          className="mt-1 shrink-0 text-xs text-neutral-600 hover:text-red-400"
+          className="mt-1 shrink-0 text-xs text-muted hover:text-accent"
         />
       </div>
 
       <dl className="mt-6 space-y-3 text-sm">
         <div>
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Catégorie</dt>
+          <dt className="text-xs uppercase tracking-wide text-muted">Catégorie</dt>
           <dd className="mt-1">
             <EditableField
               value={fournisseur.categorie ?? ''}
@@ -39,7 +39,7 @@ export function FournisseurDetail({ fournisseur }: { fournisseur: Fournisseur })
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Contact</dt>
+          <dt className="text-xs uppercase tracking-wide text-muted">Contact</dt>
           <dd className="mt-1">
             <EditableField
               value={fournisseur.contact ?? ''}
@@ -48,7 +48,7 @@ export function FournisseurDetail({ fournisseur }: { fournisseur: Fournisseur })
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Email</dt>
+          <dt className="text-xs uppercase tracking-wide text-muted">Email</dt>
           <dd className="mt-1">
             <EditableField
               value={fournisseur.email ?? ''}
@@ -57,7 +57,7 @@ export function FournisseurDetail({ fournisseur }: { fournisseur: Fournisseur })
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Téléphone</dt>
+          <dt className="text-xs uppercase tracking-wide text-muted">Téléphone</dt>
           <dd className="mt-1">
             <EditableField
               value={fournisseur.telephone ?? ''}
@@ -66,7 +66,7 @@ export function FournisseurDetail({ fournisseur }: { fournisseur: Fournisseur })
           </dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-neutral-500">Notes</dt>
+          <dt className="text-xs uppercase tracking-wide text-muted">Notes</dt>
           <dd className="mt-1">
             <EditableField
               value={fournisseur.notes ?? ''}

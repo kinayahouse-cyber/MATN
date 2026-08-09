@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { ClientsList } from '@/components/ClientsList';
+import { PageHeader } from '@/components/PageHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,16 +10,15 @@ export default async function ClientsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-medium">Client</h1>
-        <Link
-          href="/clients/new"
-          className="rounded-md border border-neutral-800 px-3 py-1.5 text-sm hover:border-neutral-600"
-        >
-          + Nouveau
-        </Link>
-      </div>
-
+      <PageHeader
+        title="Clients"
+        meta={`${clients.length} client${clients.length > 1 ? 's' : ''}`}
+        actions={
+          <Link href="/clients/new" className="text-sm text-muted hover:text-fg">
+            + Nouveau
+          </Link>
+        }
+      />
       <ClientsList clients={clients} />
     </div>
   );

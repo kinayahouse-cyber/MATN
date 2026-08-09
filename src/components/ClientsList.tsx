@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
+import { Toolbar, toolbarInputClass } from '@/components/database/Toolbar';
 import { updateOrganisationField, deleteOrganisation } from '@/app/(app)/clients/actions';
 import { TRACK_LABELS, TYPE_ORGANISATION_LABELS } from '@/lib/labels';
 
@@ -41,19 +42,16 @@ export function ClientsList({ clients }: { clients: Client[] }) {
     });
   }, [clients, search, typeFilter, trackFilter]);
 
-  const selectClass =
-    'rounded-md border border-neutral-800 bg-transparent px-2 py-1.5 text-sm text-neutral-300';
-
   return (
     <div>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <Toolbar>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un client…"
-          className={`${selectClass} flex-1 min-w-[10rem]`}
+          placeholder="Rechercher…"
+          className={`${toolbarInputClass} min-w-[10rem] flex-1`}
         />
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={selectClass}>
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={toolbarInputClass}>
           <option value="">Tous les types</option>
           {typeOptions.map((o) => (
             <option key={o.value} value={o.value}>
@@ -64,7 +62,7 @@ export function ClientsList({ clients }: { clients: Client[] }) {
         <select
           value={trackFilter}
           onChange={(e) => setTrackFilter(e.target.value)}
-          className={selectClass}
+          className={toolbarInputClass}
         >
           <option value="">Tous les tracks</option>
           {trackOptions.map((o) => (
@@ -73,14 +71,14 @@ export function ClientsList({ clients }: { clients: Client[] }) {
             </option>
           ))}
         </select>
-      </div>
+      </Toolbar>
 
       {filtered.length === 0 ? (
-        <p className="mt-4 text-sm text-neutral-600">Aucun client.</p>
+        <p className="text-sm text-muted">Aucun client.</p>
       ) : (
-        <table className="mt-4 w-full text-left text-sm">
+        <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-neutral-800 text-xs uppercase text-neutral-500">
+            <tr className="border-b border-line-strong text-xs uppercase tracking-wide text-muted">
               <th className="py-2 font-normal">Nom</th>
               <th className="font-normal">Type</th>
               <th className="font-normal">Track</th>
@@ -90,13 +88,13 @@ export function ClientsList({ clients }: { clients: Client[] }) {
           </thead>
           <tbody>
             {filtered.map((c) => (
-              <tr key={c.id} className="border-b border-neutral-900">
+              <tr key={c.id} className="border-b border-line">
                 <td className="py-2">
                   <Link href={`/clients/${c.id}`} className="hover:underline">
                     {c.nom}
                   </Link>
                 </td>
-                <td className="text-neutral-400">
+                <td className="text-muted">
                   <EditableField
                     value={c.type}
                     onSave={updateOrganisationField.bind(null, c.id, 'type')}
@@ -104,7 +102,7 @@ export function ClientsList({ clients }: { clients: Client[] }) {
                     options={typeOptions}
                   />
                 </td>
-                <td className="text-neutral-400">
+                <td className="text-muted">
                   <EditableField
                     value={c.track ?? ''}
                     onSave={updateOrganisationField.bind(null, c.id, 'track')}
@@ -112,7 +110,7 @@ export function ClientsList({ clients }: { clients: Client[] }) {
                     options={trackOptions}
                   />
                 </td>
-                <td className="text-neutral-400">
+                <td className="text-muted">
                   <EditableField
                     value={c.secteur ?? ''}
                     onSave={updateOrganisationField.bind(null, c.id, 'secteur')}
