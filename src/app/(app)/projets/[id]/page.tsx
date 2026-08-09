@@ -72,6 +72,10 @@ const inputClass =
   'mt-1 w-full border border-line bg-bg px-3 py-2 text-sm text-fg focus:outline-none focus:border-accent';
 const labelClass = 'text-sm text-muted';
 
+// Cellule du premier écran : hauteur contrainte par la grille, scroll interne si le contenu
+// dépasse — la ligne de flottaison reste stable quel que soit le volume de données.
+const CELL = 'relative min-h-0 overflow-y-auto p-8';
+
 function formatMontant(montant: unknown) {
   if (montant === null || montant === undefined) return null;
   return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(montant)) + ' DZD';
@@ -144,19 +148,17 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="-mx-8 -my-6 md:-mx-10">
-      {/* Grille principale : Jalons / Files à gauche, Overview / identité / timeline à droite */}
-      <div className="relative grid grid-cols-1 lg:grid-cols-[minmax(0,26rem)_1fr]">
-        {/* Croix à l'intersection centrale de la grille */}
-        <GridCross className="left-[26rem] top-0 hidden -translate-x-1/2 -translate-y-1/2 lg:block" />
-
-        {/* ---------- Colonne gauche : Jalons ---------- */}
-        <section className="border-b border-line-strong p-8 lg:border-r">
+      {/* ============ PREMIER ÉCRAN (100vh) : Jalons · Description · Files · Tâches ============ */}
+      <div className="grid grid-cols-1 lg:h-screen lg:grid-cols-[minmax(0,24rem)_1fr] lg:grid-rows-2">
+        {/* ---------- Jalons ---------- */}
+        <section className={`${CELL} border-b border-line-strong lg:border-r`}>
+          <GridCross className="-right-2 -top-2 hidden lg:block" />
           <SectionTitle size="xl">Jalons</SectionTitle>
 
           {projet.jalons.length === 0 ? (
             <p className="mt-8 text-sm text-muted">Aucun jalon.</p>
           ) : (
-            <ul className="relative mt-10 space-y-5 pl-6">
+            <ul className="relative mt-8 space-y-4 pl-6">
               <span className="absolute bottom-2 left-[3px] top-2 w-px bg-fg" aria-hidden />
               {projet.jalons.map((jalon) => (
                 <li key={jalon.id} className="relative">
@@ -166,12 +168,12 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                       jalon.atteint ? 'bg-fg' : 'border border-fg'
                     }`}
                   />
-                  <div className="flex items-baseline gap-4 border-b border-line pb-1.5">
+                  <div className="flex items-baseline gap-3 border-b border-line pb-1.5">
                     <EditableField
                       value={jalon.date.toISOString().slice(0, 10)}
                       onSave={updateJalonField.bind(null, jalon.id, 'date')}
                       type="date"
-                      className="w-24 shrink-0 text-xs text-muted"
+                      className="w-[5.5rem] shrink-0 text-xs text-muted"
                     />
                     <EditableField
                       value={jalon.libelle}
@@ -186,7 +188,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
             </ul>
           )}
 
-          <details className="mt-8">
+          <details className="mt-6">
             <summary className="cursor-pointer text-sm text-muted hover:text-fg">
               + Ajouter un jalon
             </summary>
@@ -207,137 +209,79 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           </details>
         </section>
 
-        {/* ---------- Colonne droite : Overview ---------- */}
-        <div>
-          <section className="border-b border-line-strong p-8">
-            <Eyebrow>Overview</Eyebrow>
-            <div className="mt-4">
-              <SectionTitle size="xl">Description</SectionTitle>
-            </div>
-            <EditableField
-              value={projet.description ?? ''}
-              onSave={updateProjetField.bind(null, projet.id, 'description')}
-              type="textarea"
-              placeholder="Aucune description."
-              className="mt-6 max-w-2xl text-sm leading-relaxed text-fg"
-            />
-
-            <div className="mt-10 flex flex-wrap items-start justify-between gap-8">
-              <div>
-                {/* Scopes : contenu non encore modélisé (ADR-009) — placeholder */}
-                <SectionTitle size="lg">Scopes</SectionTitle>
-                <p className="mt-3 text-sm text-muted">À définir.</p>
-              </div>
-              <div className="text-right">
-                <Eyebrow>Type d&rsquo;engagement</Eyebrow>
-                <EditableField
-                  value={projet.engagement ?? ''}
-                  onSave={updateProjetField.bind(null, projet.id, 'engagement')}
-                  type="select"
-                  options={engagementOptions}
-                  className="mt-2 text-sm"
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* ---------- Identité + statut ---------- */}
-          <section className="relative grid grid-cols-1 border-b border-line-strong sm:grid-cols-[1fr_auto]">
-            <div className="p-8">
+        {/* ---------- Identité + Description ---------- */}
+        <section className={`${CELL} border-b border-line-strong`}>
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div className="min-w-0 flex-1">
+              <Eyebrow>Overview</Eyebrow>
               <EditableField
                 value={projet.nom}
                 onSave={updateProjetField.bind(null, projet.id, 'nom')}
-                className="font-display text-3xl tracking-tight md:text-4xl"
+                className="mt-3 font-display text-3xl tracking-tight"
               />
-              {projet.organisation ? (
-                <Link
-                  href={`/clients/${projet.organisation.id}`}
-                  className="mt-1 inline-block border-b border-line-strong pb-0.5 text-sm text-muted hover:text-fg"
-                >
-                  {projet.organisation.nom}
-                </Link>
-              ) : (
-                <p className="mt-1 text-sm text-muted">Projet interne</p>
-              )}
-              <p className="mt-4 font-mono text-xs text-muted">{projet.code}</p>
+              <div className="mt-1 flex items-center gap-3 text-sm text-muted">
+                {projet.organisation ? (
+                  <Link
+                    href={`/clients/${projet.organisation.id}`}
+                    className="border-b border-line-strong pb-0.5 hover:text-fg"
+                  >
+                    {projet.organisation.nom}
+                  </Link>
+                ) : (
+                  <span>Projet interne</span>
+                )}
+                <span className="font-mono text-xs">{projet.code}</span>
+              </div>
             </div>
-
-            <div className="flex flex-col justify-center gap-3 border-t border-line p-8 sm:w-64 sm:border-l sm:border-t-0">
+            <div className="w-44 shrink-0">
               <StatusBlock
                 value={projet.stade}
                 onSave={updateProjetField.bind(null, projet.id, 'stade')}
               />
-              <DeleteButton
-                action={deleteProjet.bind(null, projet.id)}
-                confirmMessage={`Supprimer le projet ${projet.nom} ? Jalons, fichiers, tâches et dépenses associés seront aussi supprimés.`}
-                label="Supprimer le projet"
-                className="text-xs text-muted hover:text-accent"
-              />
             </div>
-          </section>
+          </div>
 
-          {/* ---------- Budgets / dates ---------- */}
-          <section className="grid grid-cols-2 gap-8 border-b border-line-strong p-8 sm:grid-cols-4">
+          <div className="mt-8">
+            <SectionTitle size="lg">Description</SectionTitle>
+          </div>
+          <EditableField
+            value={projet.description ?? ''}
+            onSave={updateProjetField.bind(null, projet.id, 'description')}
+            type="textarea"
+            placeholder="Aucune description."
+            className="mt-4 max-w-2xl text-sm leading-relaxed text-fg"
+          />
+
+          <div className="mt-8 grid max-w-lg grid-cols-2 gap-8">
             <div>
-              <Eyebrow>Budget</Eyebrow>
-              <EditableField
-                value={budgetRaw}
-                displayValue={budget ?? undefined}
-                onSave={updateProjetField.bind(null, projet.id, 'budget')}
-                type="number"
-                className="mt-2 font-display text-xl tabular-nums"
-              />
+              {/* Scopes : contenu non encore modélisé (ADR-009) — placeholder */}
+              <Eyebrow>Scopes</Eyebrow>
+              <p className="mt-2 px-1.5 text-sm text-muted">À définir.</p>
             </div>
             <div>
-              <Eyebrow>Budget interne</Eyebrow>
+              <Eyebrow>Type d&rsquo;engagement</Eyebrow>
               <EditableField
-                value={budgetInterneRaw}
-                displayValue={budgetInterne ?? undefined}
-                onSave={updateProjetField.bind(null, projet.id, 'budgetInterne')}
-                type="number"
-                className="mt-2 font-display text-xl tabular-nums"
-              />
-            </div>
-            <div>
-              <Eyebrow>Début</Eyebrow>
-              <EditableField
-                value={dateDebutRaw}
-                onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
-                type="date"
+                value={projet.engagement ?? ''}
+                onSave={updateProjetField.bind(null, projet.id, 'engagement')}
+                type="select"
+                options={engagementOptions}
                 className="mt-2 text-sm"
               />
             </div>
-            <div>
-              <Eyebrow>Fin prévue</Eyebrow>
-              <EditableField
-                value={dateFinPrevueRaw}
-                onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
-                type="date"
-                className="mt-2 text-sm"
-              />
-            </div>
-          </section>
+          </div>
+        </section>
 
-          {/* ---------- Timeline du cycle commercial ---------- */}
-          <section className="p-8">
-            <StadeTimeline stade={projet.stade} />
-          </section>
-        </div>
-      </div>
-
-      {/* ---------- Files ---------- */}
-      <div className="relative grid grid-cols-1 border-t border-line-strong lg:grid-cols-[minmax(0,26rem)_1fr]">
-        <GridCross className="left-[26rem] top-0 hidden -translate-x-1/2 -translate-y-1/2 lg:block" />
-
-        <section className="border-b border-line-strong p-8 lg:border-b-0 lg:border-r">
+        {/* ---------- Files ---------- */}
+        <section className={`${CELL} border-b border-line-strong lg:border-b-0 lg:border-r`}>
+          <GridCross className="-right-2 -top-2 hidden lg:block" />
           <SectionTitle size="xl">Files</SectionTitle>
 
           {projet.documents.length === 0 ? (
             <p className="mt-8 text-sm text-muted">Aucun document.</p>
           ) : (
-            <ul className="mt-10 space-y-4">
+            <ul className="mt-8 space-y-3">
               {projet.documents.map((doc) => (
-                <li key={doc.id} className="flex gap-4 border-b border-line pb-2">
+                <li key={doc.id} className="flex gap-3 border-b border-line pb-2">
                   <span aria-hidden className="mt-0.5 text-sm text-fg">
                     ✳
                   </span>
@@ -383,7 +327,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
             </ul>
           )}
 
-          <details className="mt-8">
+          <details className="mt-6">
             <summary className="cursor-pointer text-sm text-muted hover:text-fg">
               + Ajouter un fichier
             </summary>
@@ -406,12 +350,9 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               <div>
                 <label className={labelClass}>Fichier</label>
                 <input name="file" type="file" className={inputClass} />
-                <p className="mt-1 text-xs text-muted">
-                  Uploadé dans le stockage MATN. Sinon, colle un lien externe ci-dessous.
-                </p>
               </div>
               <div>
-                <label className={labelClass}>Lien du fichier (si pas d&rsquo;upload)</label>
+                <label className={labelClass}>Lien externe (si pas d&rsquo;upload)</label>
                 <input name="url" type="url" placeholder="https://…" className={inputClass} />
               </div>
               <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
@@ -421,8 +362,130 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           </details>
         </section>
 
-        {/* ---------- Contacts + Label ---------- */}
-        <div className="p-8">
+        {/* ---------- Tâches ---------- */}
+        <section className={CELL}>
+          <SectionTitle size="xl">Tâches</SectionTitle>
+          <table className="mt-8 w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-line-strong text-xs uppercase tracking-wide text-muted">
+                <th className="w-6 pb-2 font-normal" />
+                <th className="pb-2 font-normal">Libellé</th>
+                <th className="pb-2 font-normal">Statut</th>
+                <th className="pb-2 font-normal">Échéance</th>
+                <th className="pb-2 font-normal">Assigné à</th>
+                <th className="w-6 pb-2 font-normal" />
+              </tr>
+            </thead>
+            <tbody>
+              {projet.taches.map((t) => (
+                <tr key={t.id} className="border-b border-line align-top">
+                  <td className="py-2">
+                    <TacheDoneCheckbox id={t.id} statut={t.statut} />
+                  </td>
+                  <td className="py-1">
+                    <EditableField
+                      value={t.libelle}
+                      onSave={updateTacheField.bind(null, t.id, 'libelle')}
+                      className={t.statut === 'FAIT' ? 'text-muted line-through' : ''}
+                    />
+                    <EditableField
+                      value={t.description ?? ''}
+                      onSave={updateTacheField.bind(null, t.id, 'description')}
+                      type="textarea"
+                      placeholder="+"
+                      className="text-xs text-muted"
+                    />
+                  </td>
+                  <td className="py-1 text-muted">
+                    <EditableField
+                      value={t.statut}
+                      onSave={updateTacheField.bind(null, t.id, 'statut')}
+                      type="select"
+                      options={statutTacheOptions}
+                    />
+                  </td>
+                  <td className="py-1 text-muted">
+                    <EditableField
+                      value={t.echeance ? t.echeance.toISOString().slice(0, 10) : ''}
+                      onSave={updateTacheField.bind(null, t.id, 'echeance')}
+                      type="date"
+                    />
+                  </td>
+                  <td className="py-1 text-muted">
+                    <EditableField
+                      value={t.assigneAId ?? ''}
+                      onSave={updateTacheField.bind(null, t.id, 'assigneAId')}
+                      type="select"
+                      options={utilisateurs.map((u) => ({
+                        value: u.id,
+                        label: u.nom ?? u.email,
+                      }))}
+                    />
+                  </td>
+                  <td className="py-2">
+                    <DeleteButton action={deleteTache.bind(null, t.id)} />
+                  </td>
+                </tr>
+              ))}
+              <AddTacheRow projetId={projet.id} utilisateurs={utilisateurs} />
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      {/* ============ SOUS LA LIGNE DE FLOTTAISON ============ */}
+
+      {/* Budgets / dates / timeline */}
+      <section className="border-t border-line-strong p-8">
+        <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+          <div>
+            <Eyebrow>Budget</Eyebrow>
+            <EditableField
+              value={budgetRaw}
+              displayValue={budget ?? undefined}
+              onSave={updateProjetField.bind(null, projet.id, 'budget')}
+              type="number"
+              className="mt-2 font-display text-xl tabular-nums"
+            />
+          </div>
+          <div>
+            <Eyebrow>Budget interne</Eyebrow>
+            <EditableField
+              value={budgetInterneRaw}
+              displayValue={budgetInterne ?? undefined}
+              onSave={updateProjetField.bind(null, projet.id, 'budgetInterne')}
+              type="number"
+              className="mt-2 font-display text-xl tabular-nums"
+            />
+          </div>
+          <div>
+            <Eyebrow>Début</Eyebrow>
+            <EditableField
+              value={dateDebutRaw}
+              onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
+              type="date"
+              className="mt-2 text-sm"
+            />
+          </div>
+          <div>
+            <Eyebrow>Fin prévue</Eyebrow>
+            <EditableField
+              value={dateFinPrevueRaw}
+              onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
+              type="date"
+              className="mt-2 text-sm"
+            />
+          </div>
+        </div>
+        <div className="mt-10">
+          <StadeTimeline stade={projet.stade} />
+        </div>
+      </section>
+
+      {/* Contacts + Dépenses */}
+      <div className="relative grid grid-cols-1 border-t border-line-strong lg:grid-cols-2">
+        <section className="relative border-b border-line-strong p-8 lg:border-b-0 lg:border-r">
+          <GridCross className="-right-2 -top-2 hidden lg:block" />
           <SectionTitle size="lg">Contacts</SectionTitle>
           {projet.contacts.length === 0 ? (
             <p className="mt-6 text-sm text-muted">Aucun contact lié.</p>
@@ -481,80 +544,6 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* ---------- Tâches / Dépenses ---------- */}
-      <div className="relative grid grid-cols-1 border-t border-line-strong lg:grid-cols-2">
-        <GridCross className="left-1/2 top-0 hidden -translate-x-1/2 -translate-y-1/2 lg:block" />
-
-        <section className="border-b border-line-strong p-8 lg:border-b-0 lg:border-r">
-          <SectionTitle size="lg">Tâches</SectionTitle>
-          <table className="mt-6 w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-line-strong text-xs uppercase tracking-wide text-muted">
-                <th className="w-6 pb-2 font-normal" />
-                <th className="pb-2 font-normal">Libellé</th>
-                <th className="pb-2 font-normal">Statut</th>
-                <th className="pb-2 font-normal">Échéance</th>
-                <th className="pb-2 font-normal">Assigné à</th>
-                <th className="w-6 pb-2 font-normal" />
-              </tr>
-            </thead>
-            <tbody>
-              {projet.taches.map((t) => (
-                <tr key={t.id} className="border-b border-line align-top">
-                  <td className="py-2">
-                    <TacheDoneCheckbox id={t.id} statut={t.statut} />
-                  </td>
-                  <td className="py-1">
-                    <EditableField
-                      value={t.libelle}
-                      onSave={updateTacheField.bind(null, t.id, 'libelle')}
-                      className={t.statut === 'FAIT' ? 'text-muted line-through' : ''}
-                    />
-                    <EditableField
-                      value={t.description ?? ''}
-                      onSave={updateTacheField.bind(null, t.id, 'description')}
-                      type="textarea"
-                      placeholder="Description —"
-                      className="text-xs text-muted"
-                    />
-                  </td>
-                  <td className="py-1 text-muted">
-                    <EditableField
-                      value={t.statut}
-                      onSave={updateTacheField.bind(null, t.id, 'statut')}
-                      type="select"
-                      options={statutTacheOptions}
-                    />
-                  </td>
-                  <td className="py-1 text-muted">
-                    <EditableField
-                      value={t.echeance ? t.echeance.toISOString().slice(0, 10) : ''}
-                      onSave={updateTacheField.bind(null, t.id, 'echeance')}
-                      type="date"
-                    />
-                  </td>
-                  <td className="py-1 text-muted">
-                    <EditableField
-                      value={t.assigneAId ?? ''}
-                      onSave={updateTacheField.bind(null, t.id, 'assigneAId')}
-                      type="select"
-                      options={utilisateurs.map((u) => ({
-                        value: u.id,
-                        label: u.nom ?? u.email,
-                      }))}
-                    />
-                  </td>
-                  <td className="py-2">
-                    <DeleteButton action={deleteTache.bind(null, t.id)} />
-                  </td>
-                </tr>
-              ))}
-              <AddTacheRow projetId={projet.id} utilisateurs={utilisateurs} />
-            </tbody>
-          </table>
         </section>
 
         <section className="p-8">
@@ -610,7 +599,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         </section>
       </div>
 
-      {/* ---------- Assets ---------- */}
+      {/* Assets */}
       <section className="border-t border-line-strong p-8">
         <SectionTitle size="lg">Assets</SectionTitle>
         {projet.assets.length === 0 ? (
@@ -702,13 +691,18 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         </details>
       </section>
 
-      {/* ---------- Barre de capture ---------- */}
+      {/* Barre de capture */}
       <section className="border-t border-line-strong p-8">
-        <CaptureBar
-          projetId={projet.id}
-          feed={feed}
-          addDecision={addDecision}
-          addNote={addNote}
+        <CaptureBar projetId={projet.id} feed={feed} addDecision={addDecision} addNote={addNote} />
+      </section>
+
+      {/* Suppression du projet — action destructrice, isolée en fin de page */}
+      <section className="border-t border-line-strong p-8">
+        <DeleteButton
+          action={deleteProjet.bind(null, projet.id)}
+          confirmMessage={`Supprimer le projet ${projet.nom} ? Jalons, fichiers, tâches et dépenses associés seront aussi supprimés.`}
+          label="Supprimer le projet"
+          className="text-xs uppercase tracking-wide text-muted hover:text-accent"
         />
       </section>
     </div>

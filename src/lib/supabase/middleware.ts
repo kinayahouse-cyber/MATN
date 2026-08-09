@@ -3,7 +3,15 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = ['/login'];
 
+// Échappatoire de développement local : permet d'inspecter l'UI sans session Supabase, contre
+// une base Postgres locale. Doublement verrouillée (NODE_ENV + variable explicite) et
+// impossible à activer dans un build de production, où NODE_ENV vaut toujours 'production'.
+const AUTH_DISABLED =
+  process.env.NODE_ENV === 'development' && process.env.MATN_DEV_DISABLE_AUTH === '1';
+
 export async function updateSession(request: NextRequest) {
+  if (AUTH_DISABLED) return NextResponse.next({ request });
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

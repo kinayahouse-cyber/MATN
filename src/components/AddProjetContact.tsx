@@ -44,7 +44,7 @@ export function AddProjetContact({
         type="button"
         onClick={submit}
         disabled={!contactId || pending}
-        className="bg-fg px-2 py-1 text-xs font-medium text-bg disabled:opacity-40"
+        className="border border-line px-3 py-1.5 text-xs uppercase tracking-wide text-muted transition-colors duration-fast hover:border-accent hover:text-accent disabled:opacity-40"
       >
         Lier
       </button>

@@ -3,22 +3,26 @@
 @tailwind utilities;
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 :root {
-  /* MATN design tokens — near-black / warm off-white system (Phase 1). */
-  /* RGB triplets (not hex) so Tailwind's bg-x/40 opacity modifiers work. */
-  --matn-bg: 10 10 9;
-  --matn-fg: 239 236 228;
-  --matn-muted: 140 136 127;
-  --matn-line: 38 36 31;
-  --matn-line-strong: 58 55 48;
+  /* Palette claire — off-white chaud / quasi-noir, d'après la référence visuelle. */
+  --matn-bg: 245 243 239;
+  --matn-fg: 12 12 11;
+  --matn-muted: 107 104 98;
+  --matn-line: 214 210 202;
+  --matn-line-strong: 160 156 147;
   --matn-accent: 232 98 44;
 }
 
 body {
   @apply bg-bg text-fg font-sans;
+}
+
+/* Les cases à cocher natives arrivent en bleu système — les aligner sur l'accent MATN. */
+input[type='checkbox'] {
+  accent-color: rgb(var(--matn-accent));
 }
 
 :focus-visible {
