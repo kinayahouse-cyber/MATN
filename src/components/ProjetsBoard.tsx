@@ -3,8 +3,9 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { EditableField } from '@/components/EditableField';
+import { DeleteButton } from '@/components/DeleteButton';
 import { AddProjetRow } from '@/components/AddProjetRow';
-import { updateProjetField } from '@/app/(app)/projets/actions';
+import { updateProjetField, deleteProjet } from '@/app/(app)/projets/actions';
 import { TRACK_LABELS, STADE_PROJET_LABELS } from '@/lib/labels';
 
 const STADE_COLUMNS = ['DEVIS_ENVOYE', 'SIGNE', 'EN_COURS', 'LIVRE', 'CLOS', 'ABANDONNE'] as const;
@@ -109,6 +110,7 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
               <th className="font-normal">Client</th>
               <th className="font-normal">Track</th>
               <th className="font-normal">Stade</th>
+              <th className="w-6 font-normal" />
             </tr>
           </thead>
           <tbody>
@@ -143,6 +145,12 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
                     onSave={updateProjetField.bind(null, p.id, 'stade')}
                     type="select"
                     options={stadeOptions}
+                  />
+                </td>
+                <td>
+                  <DeleteButton
+                    action={deleteProjet.bind(null, p.id)}
+                    confirmMessage={`Supprimer le projet ${p.nom} ? Jalons, fichiers, tâches et dépenses associés seront aussi supprimés.`}
                   />
                 </td>
               </tr>

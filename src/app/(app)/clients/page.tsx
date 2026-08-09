@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { TRACK_LABELS, TYPE_ORGANISATION_LABELS } from '@/lib/labels';
 import { EditableField } from '@/components/EditableField';
-import { updateOrganisationField } from './actions';
+import { DeleteButton } from '@/components/DeleteButton';
+import { updateOrganisationField, deleteOrganisation } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,7 @@ export default async function ClientsPage() {
               <th className="font-normal">Type</th>
               <th className="font-normal">Track</th>
               <th className="font-normal">Secteur</th>
+              <th className="w-6 font-normal" />
             </tr>
           </thead>
           <tbody>
@@ -67,6 +69,12 @@ export default async function ClientsPage() {
                   <EditableField
                     value={c.secteur ?? ''}
                     onSave={updateOrganisationField.bind(null, c.id, 'secteur')}
+                  />
+                </td>
+                <td>
+                  <DeleteButton
+                    action={deleteOrganisation.bind(null, c.id)}
+                    confirmMessage={`Supprimer ${c.nom} ? Les projets liés seront détachés, pas supprimés.`}
                   />
                 </td>
               </tr>

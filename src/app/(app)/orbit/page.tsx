@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { CATEGORIE_FOURNISSEUR_LABELS } from '@/lib/labels';
 import { EditableField } from '@/components/EditableField';
-import { updateFournisseurField } from './actions';
+import { DeleteButton } from '@/components/DeleteButton';
+import { updateFournisseurField, deleteFournisseur } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,7 @@ export default async function OrbitPage() {
               <th className="py-2 font-normal">Nom</th>
               <th className="font-normal">Catégorie</th>
               <th className="font-normal">Contact</th>
+              <th className="w-6 font-normal" />
             </tr>
           </thead>
           <tbody>
@@ -57,6 +59,12 @@ export default async function OrbitPage() {
                   />
                 </td>
                 <td className="text-neutral-400">{f.contact ?? f.email ?? '—'}</td>
+                <td>
+                  <DeleteButton
+                    action={deleteFournisseur.bind(null, f.id)}
+                    confirmMessage={`Supprimer ${f.nom} ?`}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
