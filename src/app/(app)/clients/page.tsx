@@ -1,17 +1,8 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
-import { TRACK_LABELS, TYPE_ORGANISATION_LABELS } from '@/lib/labels';
-import { EditableField } from '@/components/EditableField';
-import { DeleteButton } from '@/components/DeleteButton';
-import { updateOrganisationField, deleteOrganisation } from './actions';
+import { ClientsList } from '@/components/ClientsList';
 
 export const dynamic = 'force-dynamic';
-
-const typeOptions = Object.entries(TYPE_ORGANISATION_LABELS).map(([value, label]) => ({
-  value,
-  label,
-}));
-const trackOptions = Object.entries(TRACK_LABELS).map(([value, label]) => ({ value, label }));
 
 export default async function ClientsPage() {
   const clients = await prisma.organisation.findMany({ orderBy: { nom: 'asc' } });
@@ -28,60 +19,7 @@ export default async function ClientsPage() {
         </Link>
       </div>
 
-      {clients.length === 0 ? (
-        <p className="mt-4 text-sm text-neutral-600">Aucun client.</p>
-      ) : (
-        <table className="mt-4 w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-neutral-800 text-xs uppercase text-neutral-500">
-              <th className="py-2 font-normal">Nom</th>
-              <th className="font-normal">Type</th>
-              <th className="font-normal">Track</th>
-              <th className="font-normal">Secteur</th>
-              <th className="w-6 font-normal" />
-            </tr>
-          </thead>
-          <tbody>
-            {clients.map((c) => (
-              <tr key={c.id} className="border-b border-neutral-900">
-                <td className="py-2">
-                  <Link href={`/clients/${c.id}`} className="hover:underline">
-                    {c.nom}
-                  </Link>
-                </td>
-                <td className="text-neutral-400">
-                  <EditableField
-                    value={c.type}
-                    onSave={updateOrganisationField.bind(null, c.id, 'type')}
-                    type="select"
-                    options={typeOptions}
-                  />
-                </td>
-                <td className="text-neutral-400">
-                  <EditableField
-                    value={c.track ?? ''}
-                    onSave={updateOrganisationField.bind(null, c.id, 'track')}
-                    type="select"
-                    options={trackOptions}
-                  />
-                </td>
-                <td className="text-neutral-400">
-                  <EditableField
-                    value={c.secteur ?? ''}
-                    onSave={updateOrganisationField.bind(null, c.id, 'secteur')}
-                  />
-                </td>
-                <td>
-                  <DeleteButton
-                    action={deleteOrganisation.bind(null, c.id)}
-                    confirmMessage={`Supprimer ${c.nom} ? Les projets liés seront détachés, pas supprimés.`}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <ClientsList clients={clients} />
     </div>
   );
 }
