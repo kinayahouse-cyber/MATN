@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import type { Track, Engagement, TypeDocument, Prisma } from '@prisma/client';
+import type { Track, Engagement, TypeDocument, StadeProjet, Prisma } from '@prisma/client';
 
 export async function createProjet(formData: FormData) {
   const code = String(formData.get('code') ?? '').trim();
@@ -177,6 +177,23 @@ export async function deleteProjet(id: string) {
   await prisma.projet.delete({ where: { id } });
   revalidatePath('/projets');
   redirect('/projets');
+}
+
+// Variantes sans redirect, pour les actions groupées depuis la liste (sélection multiple) —
+// deleteProjet/updateProjetField redirigent ou sont pensés pour un seul enregistrement à la fois.
+export async function deleteProjets(ids: string[]) {
+  if (ids.length === 0) return;
+  await prisma.projet.deleteMany({ where: { id: { in: ids } } });
+  revalidatePath('/projets');
+}
+
+export async function moveProjets(ids: string[], stade: string) {
+  if (ids.length === 0) return;
+  await prisma.projet.updateMany({
+    where: { id: { in: ids } },
+    data: { stade: stade as StadeProjet },
+  });
+  revalidatePath('/projets');
 }
 
 export async function addContactToProjet(projetId: string, contactId: string) {

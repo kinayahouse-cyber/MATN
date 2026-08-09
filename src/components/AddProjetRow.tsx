@@ -37,7 +37,7 @@ export function AddProjetRow({ clients }: { clients: Client[] }) {
   if (!open) {
     return (
       <tr>
-        <td colSpan={6} className="py-2">
+        <td colSpan={7} className="py-2">
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -52,6 +52,7 @@ export function AddProjetRow({ clients }: { clients: Client[] }) {
 
   return (
     <tr className="border-b border-neutral-900">
+      <td />
       <td className="py-1">
         <input
           ref={codeRef}
