@@ -6,6 +6,9 @@ import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
 import { AddProjetRow } from '@/components/AddProjetRow';
 import { ProjetCard } from '@/components/ProjetCard';
+import { StatusDot } from '@/components/properties/Status';
+import { ViewTabs } from '@/components/database/ViewTabs';
+import { Toolbar, toolbarInputClass } from '@/components/database/Toolbar';
 import { updateProjetField, deleteProjet, deleteProjets, moveProjets } from '@/app/(app)/projets/actions';
 import { TRACK_LABELS, STADE_PROJET_LABELS } from '@/lib/labels';
 
@@ -88,22 +91,19 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
     });
   };
 
-  const selectClass =
-    'rounded-md border border-neutral-800 bg-transparent px-2 py-1.5 text-sm text-neutral-300';
-
   return (
     <div>
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <Toolbar>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un projet…"
-          className={`${selectClass} flex-1 min-w-[10rem]`}
+          placeholder="Rechercher…"
+          className={`${toolbarInputClass} min-w-[10rem] flex-1`}
         />
         <select
           value={trackFilter}
           onChange={(e) => setTrackFilter(e.target.value)}
-          className={selectClass}
+          className={toolbarInputClass}
         >
           <option value="">Tous les tracks</option>
           {trackOptions.map((o) => (
@@ -115,7 +115,7 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
         <select
           value={clientFilter}
           onChange={(e) => setClientFilter(e.target.value)}
-          className={selectClass}
+          className={toolbarInputClass}
         >
           <option value="">Tous les clients</option>
           {clientOptions.map((o) => (
@@ -127,7 +127,7 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
         <select
           value={stadeFilter}
           onChange={(e) => setStadeFilter(e.target.value)}
-          className={selectClass}
+          className={toolbarInputClass}
         >
           <option value="">Tous les stades</option>
           {stadeOptions.map((o) => (
@@ -136,31 +136,25 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
             </option>
           ))}
         </select>
-        <div className="flex overflow-hidden rounded-md border border-neutral-800 text-sm">
-          <button
-            type="button"
-            onClick={() => setView('list')}
-            className={`px-3 py-1.5 ${view === 'list' ? 'bg-neutral-100 text-neutral-950' : 'text-neutral-400 hover:text-neutral-100'}`}
-          >
-            Liste
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('board')}
-            className={`px-3 py-1.5 ${view === 'board' ? 'bg-neutral-100 text-neutral-950' : 'text-neutral-400 hover:text-neutral-100'}`}
-          >
-            Cartes
-          </button>
+        <div className="ml-auto">
+          <ViewTabs
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'list', label: 'Liste' },
+              { value: 'board', label: 'Cartes' },
+            ]}
+          />
         </div>
-      </div>
+      </Toolbar>
 
       {view === 'list' && selected.size > 0 && (
-        <div className="mt-3 flex items-center gap-2 rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm">
-          <span className="text-neutral-400">{selected.size} sélectionné(s)</span>
+        <div className="mb-2 flex items-center gap-3 border border-line bg-line/20 px-3 py-2 text-sm">
+          <span className="text-muted">{selected.size} sélectionné(s)</span>
           <select
             value={bulkMoveTo}
             onChange={(e) => setBulkMoveTo(e.target.value)}
-            className={selectClass}
+            className={toolbarInputClass}
           >
             <option value="">Déplacer vers…</option>
             {stadeOptions.map((o) => (
@@ -173,7 +167,7 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
             type="button"
             onClick={bulkMove}
             disabled={!bulkMoveTo || pending}
-            className="rounded bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-950 disabled:opacity-40"
+            className="bg-fg px-2 py-1 text-xs font-medium text-bg disabled:opacity-40"
           >
             Déplacer
           </button>
@@ -181,14 +175,14 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
             type="button"
             onClick={bulkDelete}
             disabled={pending}
-            className="rounded px-2 py-1 text-xs text-red-400 hover:bg-neutral-800 disabled:opacity-40"
+            className="px-2 py-1 text-xs text-accent hover:bg-line/40 disabled:opacity-40"
           >
             Supprimer
           </button>
           <button
             type="button"
             onClick={clearSelection}
-            className="ml-auto text-xs text-neutral-500 hover:text-neutral-300"
+            className="ml-auto text-xs text-muted hover:text-fg"
           >
             Annuler
           </button>
@@ -196,9 +190,9 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
       )}
 
       {view === 'list' ? (
-        <table className="mt-4 w-full text-left text-sm">
+        <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-neutral-800 text-xs uppercase text-neutral-500">
+            <tr className="border-b border-line-strong text-xs uppercase tracking-wide text-muted">
               <th className="w-6 py-2 font-normal">
                 <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} />
               </th>
@@ -212,7 +206,7 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
           </thead>
           <tbody>
             {filtered.map((p) => (
-              <tr key={p.id} className="border-b border-neutral-900">
+              <tr key={p.id} className="border-b border-line">
                 <td className="py-2">
                   <input
                     type="checkbox"
@@ -220,13 +214,13 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
                     onChange={() => toggleSelected(p.id)}
                   />
                 </td>
-                <td className="font-mono text-xs text-neutral-500">{p.code}</td>
+                <td className="font-mono text-xs text-muted">{p.code}</td>
                 <td>
                   <Link href={`/projets/${p.id}`} className="hover:underline">
                     {p.nom}
                   </Link>
                 </td>
-                <td className="text-neutral-400">
+                <td className="text-muted">
                   <EditableField
                     value={p.organisationId ?? ''}
                     onSave={updateProjetField.bind(null, p.id, 'organisationId')}
@@ -235,7 +229,7 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
                     placeholder="—"
                   />
                 </td>
-                <td className="text-neutral-400">
+                <td className="text-muted">
                   <EditableField
                     value={p.track ?? ''}
                     onSave={updateProjetField.bind(null, p.id, 'track')}
@@ -243,13 +237,16 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
                     options={trackOptions}
                   />
                 </td>
-                <td className="text-neutral-400">
-                  <EditableField
-                    value={p.stade}
-                    onSave={updateProjetField.bind(null, p.id, 'stade')}
-                    type="select"
-                    options={stadeOptions}
-                  />
+                <td className="text-muted">
+                  <div className="flex items-center gap-2">
+                    <StatusDot active={p.stade === 'EN_COURS'} muted={p.stade === 'ABANDONNE'} />
+                    <EditableField
+                      value={p.stade}
+                      onSave={updateProjetField.bind(null, p.id, 'stade')}
+                      type="select"
+                      options={stadeOptions}
+                    />
+                  </div>
                 </td>
                 <td>
                   <DeleteButton
@@ -263,24 +260,31 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
           </tbody>
         </table>
       ) : (
-        <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
-          {STADE_COLUMNS.map((stade) => {
-            const items = filtered.filter((p) => p.stade === stade);
-            return (
-              <div key={stade} className="w-64 shrink-0">
-                <p className="text-xs uppercase tracking-wide text-neutral-500">
-                  {STADE_PROJET_LABELS[stade]}{' '}
-                  <span className="text-neutral-700">({items.length})</span>
+        <div className="flex gap-6 overflow-x-auto pb-2">
+          {STADE_COLUMNS.map((stade, i) => (
+            <div key={stade} className="flex w-64 shrink-0 gap-6">
+              {i > 0 && <div className="w-px shrink-0 bg-line" />}
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
+                  <StatusDot active={stade === 'EN_COURS'} muted={stade === 'ABANDONNE'} />
+                  {STADE_PROJET_LABELS[stade]}
+                  <span className="text-line-strong">
+                    ({filtered.filter((p) => p.stade === stade).length})
+                  </span>
                 </p>
-                <div className="mt-2 space-y-2">
-                  {items.map((p) => (
-                    <ProjetCard key={p.id} projet={p} />
-                  ))}
-                  {items.length === 0 && <p className="text-xs text-neutral-700">—</p>}
+                <div className="mt-3 space-y-2">
+                  {filtered
+                    .filter((p) => p.stade === stade)
+                    .map((p) => (
+                      <ProjetCard key={p.id} projet={p} />
+                    ))}
+                  {filtered.filter((p) => p.stade === stade).length === 0 && (
+                    <p className="text-xs text-line-strong">—</p>
+                  )}
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
     </div>

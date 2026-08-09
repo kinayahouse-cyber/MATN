@@ -5,7 +5,7 @@ import { useTransition } from 'react';
 export function DeleteButton({
   action,
   confirmMessage = 'Supprimer ?',
-  className = 'text-xs text-neutral-600 hover:text-red-400',
+  className = 'text-xs text-muted hover:text-accent',
   label = '×',
 }: {
   action: () => Promise<void>;

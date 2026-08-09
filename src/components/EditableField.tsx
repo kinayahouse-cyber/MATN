@@ -46,7 +46,7 @@ export function EditableField({
   };
 
   const baseInputClass =
-    'w-full rounded border border-neutral-700 bg-neutral-950 px-1.5 py-1 text-sm focus:outline-none focus:border-neutral-500';
+    'w-full border border-line bg-bg px-1.5 py-1 text-sm text-fg focus:outline-none focus:border-accent transition-colors duration-fast';
 
   if (!editing) {
     const display =
@@ -58,9 +58,9 @@ export function EditableField({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className={`block w-full rounded px-1.5 py-1 text-left hover:bg-neutral-900 ${
+        className={`block w-full px-1.5 py-1 text-left transition-colors duration-fast hover:bg-line/40 ${
           pending ? 'opacity-50' : ''
-        } ${!value ? 'text-neutral-600' : ''} ${className}`}
+        } ${!value ? 'text-muted' : ''} ${className}`}
       >
         {display}
       </button>

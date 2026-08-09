@@ -53,7 +53,7 @@ export function ProjetCard({ projet }: { projet: Projet }) {
   return (
     <div
       ref={ref}
-      className={`relative rounded-md border border-neutral-800 p-3 hover:border-neutral-600 ${pending ? 'opacity-50' : ''}`}
+      className={`relative border border-line p-3 transition-colors duration-fast hover:border-line-strong ${pending ? 'opacity-50' : ''}`}
     >
       <button
         type="button"
@@ -63,16 +63,16 @@ export function ProjetCard({ projet }: { projet: Projet }) {
           setMoveOpen(false);
           setMenuOpen((v) => !v);
         }}
-        className="absolute right-2 top-2 rounded px-1 text-neutral-600 hover:bg-neutral-900 hover:text-neutral-200"
+        className="absolute right-2 top-2 px-1 text-muted hover:text-fg"
       >
         ⋯
       </button>
 
       {menuOpen && (
-        <div className="absolute right-2 top-7 z-10 w-40 rounded-md border border-neutral-700 bg-neutral-950 py-1 text-xs shadow-lg">
+        <div className="absolute right-2 top-7 z-10 w-40 border border-line bg-bg py-1 text-xs shadow-lg">
           <Link
             href={`/projets/${projet.id}`}
-            className="block px-3 py-1.5 hover:bg-neutral-900"
+            className="block px-3 py-1.5 hover:bg-line/40"
             onClick={() => setMenuOpen(false)}
           >
             Modifier
@@ -83,12 +83,12 @@ export function ProjetCard({ projet }: { projet: Projet }) {
               e.stopPropagation();
               setMoveOpen((v) => !v);
             }}
-            className="block w-full px-3 py-1.5 text-left hover:bg-neutral-900"
+            className="block w-full px-3 py-1.5 text-left hover:bg-line/40"
           >
             Déplacer vers…
           </button>
           {moveOpen && (
-            <div className="border-t border-neutral-800">
+            <div className="border-t border-line">
               {STADE_VALUES.filter((s) => s !== projet.stade).map((s) => (
                 <button
                   key={s}
@@ -97,7 +97,7 @@ export function ProjetCard({ projet }: { projet: Projet }) {
                     e.stopPropagation();
                     move(s);
                   }}
-                  className="block w-full px-3 py-1.5 text-left text-neutral-400 hover:bg-neutral-900"
+                  className="block w-full px-3 py-1.5 text-left text-muted hover:bg-line/40"
                 >
                   {STADE_PROJET_LABELS[s]}
                 </button>
@@ -110,7 +110,7 @@ export function ProjetCard({ projet }: { projet: Projet }) {
               e.stopPropagation();
               remove();
             }}
-            className="block w-full px-3 py-1.5 text-left text-red-400 hover:bg-neutral-900"
+            className="block w-full px-3 py-1.5 text-left text-accent hover:bg-line/40"
           >
             Supprimer
           </button>
@@ -119,7 +119,7 @@ export function ProjetCard({ projet }: { projet: Projet }) {
 
       <Link href={`/projets/${projet.id}`} className="block pr-5">
         <p className="text-sm font-medium">{projet.nom}</p>
-        <p className="mt-0.5 text-xs text-neutral-500">
+        <p className="mt-0.5 text-xs text-muted">
           {projet.organisation?.nom ?? '—'}
           {projet.track ? ` · ${TRACK_LABELS[projet.track]}` : ''}
         </p>
@@ -128,13 +128,13 @@ export function ProjetCard({ projet }: { projet: Projet }) {
             {projet.taches.slice(0, 4).map((t) => (
               <li
                 key={t.id}
-                className={`text-xs ${t.statut === 'FAIT' ? 'text-neutral-600 line-through' : 'text-neutral-400'}`}
+                className={`text-xs ${t.statut === 'FAIT' ? 'text-line-strong line-through' : 'text-muted'}`}
               >
                 {t.libelle}
               </li>
             ))}
             {projet.taches.length > 4 && (
-              <li className="text-xs text-neutral-600">+{projet.taches.length - 4} autres</li>
+              <li className="text-xs text-line-strong">+{projet.taches.length - 4} autres</li>
             )}
           </ul>
         )}
