@@ -2,6 +2,11 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { TRACK_LABELS, TYPE_ORGANISATION_LABELS, STADE_PROJET_LABELS } from '@/lib/labels';
+import { createContact } from '../actions';
+
+const inputClass =
+  'mt-1 w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm';
+const labelClass = 'text-sm text-neutral-400';
 
 export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -46,6 +51,37 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
               ))}
             </ul>
           )}
+
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm text-neutral-500 hover:text-neutral-300">
+              + Ajouter un contact
+            </summary>
+            <form action={createContact} className="mt-3 space-y-3">
+              <input type="hidden" name="organisationId" value={client.id} />
+              <div>
+                <label className={labelClass}>Nom</label>
+                <input name="nom" required className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Rôle</label>
+                <input name="role" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Email</label>
+                <input name="email" type="email" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Téléphone</label>
+                <input name="telephone" className={inputClass} />
+              </div>
+              <button
+                type="submit"
+                className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950"
+              >
+                Ajouter
+              </button>
+            </form>
+          </details>
         </section>
 
         <section>

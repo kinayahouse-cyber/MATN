@@ -9,7 +9,15 @@ export default async function ClientsPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-medium">Client</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-medium">Client</h1>
+        <Link
+          href="/clients/new"
+          className="rounded-md border border-neutral-800 px-3 py-1.5 text-sm hover:border-neutral-600"
+        >
+          + Nouveau
+        </Link>
+      </div>
 
       {clients.length === 0 ? (
         <p className="mt-4 text-sm text-neutral-600">Aucun client.</p>

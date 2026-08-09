@@ -12,7 +12,15 @@ export default async function ProjetsPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-medium">Projects</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-medium">Projects</h1>
+        <Link
+          href="/projets/new"
+          className="rounded-md border border-neutral-800 px-3 py-1.5 text-sm hover:border-neutral-600"
+        >
+          + Nouveau
+        </Link>
+      </div>
 
       {projets.length === 0 ? (
         <p className="mt-4 text-sm text-neutral-600">Aucun projet.</p>
