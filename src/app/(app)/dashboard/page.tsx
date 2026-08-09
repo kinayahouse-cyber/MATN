@@ -2,10 +2,9 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/PageHeader';
 
 const LINKS = [
-  { href: '/clients', label: 'Clients' },
+  { href: '/clients', label: 'Client' },
   { href: '/projets', label: 'Projects' },
   { href: '/orbit', label: 'Orbit' },
-  { href: '/taches', label: 'Tasks' },
   { href: '/knowledge-hub', label: 'Knowledge Hub' },
 ];
 
