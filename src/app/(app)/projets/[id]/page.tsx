@@ -18,6 +18,7 @@ import {
   deleteDocument,
   updateProjetField,
   deleteProjet,
+  removeContactFromProjet,
   updateTacheField,
   deleteTache,
   updateDepenseField,
@@ -29,6 +30,7 @@ import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
 import { AddTacheRow } from '@/components/AddTacheRow';
 import { AddDepenseRow } from '@/components/AddDepenseRow';
+import { AddProjetContact } from '@/components/AddProjetContact';
 import { JalonAtteintCheckbox } from '@/components/JalonAtteintCheckbox';
 import { TacheDoneCheckbox } from '@/components/TacheDoneCheckbox';
 
@@ -84,11 +86,12 @@ function timeAgo(date: Date) {
 export default async function ProjetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [projet, utilisateurs] = await Promise.all([
+  const [projet, utilisateurs, allContacts] = await Promise.all([
     prisma.projet.findUnique({
       where: { id },
       include: {
         organisation: true,
+        contacts: { orderBy: { nom: 'asc' } },
         jalons: { orderBy: { ordre: 'asc' } },
         documents: { orderBy: { createdAt: 'desc' } },
         decisions: { orderBy: { date: 'desc' }, take: 10 },
@@ -98,9 +101,15 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
       },
     }),
     prisma.utilisateur.findMany({ orderBy: { email: 'asc' } }),
+    prisma.contact.findMany({ include: { organisation: true }, orderBy: { nom: 'asc' } }),
   ]);
 
   if (!projet) notFound();
+
+  const linkedContactIds = new Set(projet.contacts.map((c) => c.id));
+  const availableContacts = allContacts
+    .filter((c) => !linkedContactIds.has(c.id))
+    .map((c) => ({ id: c.id, nom: c.nom, organisationNom: c.organisation?.nom ?? null }));
 
   const totalDepenses = projet.depenses.reduce((sum, d) => sum + Number(d.montant), 0);
 
@@ -283,6 +292,36 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           </div>
         </section>
       )}
+
+      {/* Contacts liés (relation directe Contact<->Projet, ADR-006 pt.5) */}
+      <section className="border-t border-neutral-800 pt-4">
+        <h2 className="text-sm font-medium uppercase tracking-wide">Contacts</h2>
+        {projet.contacts.length === 0 ? (
+          <p className="mt-3 text-sm text-neutral-600">Aucun contact lié.</p>
+        ) : (
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {projet.contacts.map((contact) => (
+              <li
+                key={contact.id}
+                className="flex items-center gap-2 rounded-full border border-neutral-800 px-3 py-1 text-sm"
+              >
+                {contact.organisationId ? (
+                  <Link href={`/clients/${contact.organisationId}`} className="hover:underline">
+                    {contact.nom}
+                  </Link>
+                ) : (
+                  <span>{contact.nom}</span>
+                )}
+                <DeleteButton
+                  action={removeContactFromProjet.bind(null, projet.id, contact.id)}
+                  confirmMessage={`Délier ${contact.nom} de ce projet ?`}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+        <AddProjetContact projetId={projet.id} contacts={availableContacts} />
+      </section>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         {/* Jalons */}

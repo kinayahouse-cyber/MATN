@@ -28,7 +28,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
   const client = await prisma.organisation.findUnique({
     where: { id },
     include: {
-      contacts: { orderBy: { nom: 'asc' } },
+      contacts: { orderBy: { nom: 'asc' }, include: { projets: { select: { id: true, nom: true } } } },
       projets: { orderBy: { createdAt: 'desc' } },
       decisions: { orderBy: { date: 'desc' }, take: 5 },
       notesMatn: { orderBy: { createdAt: 'desc' }, take: 5 },
@@ -134,6 +134,15 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
                       placeholder="Téléphone —"
                     />
                   </div>
+                  {contact.projets.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-neutral-600">
+                      {contact.projets.map((p) => (
+                        <Link key={p.id} href={`/projets/${p.id}`} className="hover:underline">
+                          {p.nom}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

@@ -179,6 +179,26 @@ export async function deleteProjet(id: string) {
   redirect('/projets');
 }
 
+export async function addContactToProjet(projetId: string, contactId: string) {
+  if (!contactId) throw new Error('Contact requis');
+
+  await prisma.projet.update({
+    where: { id: projetId },
+    data: { contacts: { connect: { id: contactId } } },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+}
+
+export async function removeContactFromProjet(projetId: string, contactId: string) {
+  await prisma.projet.update({
+    where: { id: projetId },
+    data: { contacts: { disconnect: { id: contactId } } },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+}
+
 export async function createTacheInline(
   projetId: string,
   libelle: string,
