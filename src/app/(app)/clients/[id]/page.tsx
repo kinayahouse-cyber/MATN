@@ -2,8 +2,15 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { TRACK_LABELS, TYPE_ORGANISATION_LABELS, STADE_PROJET_LABELS } from '@/lib/labels';
-import { createContact, updateOrganisationField, updateContactField } from '../actions';
+import {
+  createContact,
+  updateOrganisationField,
+  updateContactField,
+  deleteOrganisation,
+  deleteContact,
+} from '../actions';
 import { EditableField } from '@/components/EditableField';
+import { DeleteButton } from '@/components/DeleteButton';
 
 const inputClass =
   'mt-1 w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm';
@@ -33,11 +40,19 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-8">
       <div>
-        <EditableField
-          value={client.nom}
-          onSave={updateOrganisationField.bind(null, client.id, 'nom')}
-          className="text-xl font-medium"
-        />
+        <div className="flex items-start justify-between gap-2">
+          <EditableField
+            value={client.nom}
+            onSave={updateOrganisationField.bind(null, client.id, 'nom')}
+            className="flex-1 text-xl font-medium"
+          />
+          <DeleteButton
+            action={deleteOrganisation.bind(null, client.id)}
+            confirmMessage={`Supprimer ${client.nom} ? Les projets liés seront détachés, pas supprimés.`}
+            label="Supprimer"
+            className="mt-1 shrink-0 text-xs text-neutral-600 hover:text-red-400"
+          />
+        </div>
         <div className="mt-2 flex flex-wrap gap-4 text-sm text-neutral-400">
           <EditableField
             value={client.type}
@@ -91,11 +106,17 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
             <ul className="mt-3 divide-y divide-neutral-800">
               {client.contacts.map((contact) => (
                 <li key={contact.id} className="py-2 text-sm">
-                  <EditableField
-                    value={contact.nom}
-                    onSave={updateContactField.bind(null, contact.id, 'nom')}
-                    className="font-medium"
-                  />
+                  <div className="flex items-start justify-between gap-2">
+                    <EditableField
+                      value={contact.nom}
+                      onSave={updateContactField.bind(null, contact.id, 'nom')}
+                      className="flex-1 font-medium"
+                    />
+                    <DeleteButton
+                      action={deleteContact.bind(null, contact.id)}
+                      confirmMessage={`Supprimer le contact ${contact.nom} ?`}
+                    />
+                  </div>
                   <div className="mt-1 flex flex-wrap gap-3 text-xs text-neutral-500">
                     <EditableField
                       value={contact.role ?? ''}

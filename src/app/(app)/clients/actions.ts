@@ -75,6 +75,12 @@ export async function updateOrganisationField(id: string, field: OrganisationFie
   revalidatePath(`/clients/${id}`);
 }
 
+export async function deleteOrganisation(id: string) {
+  await prisma.organisation.delete({ where: { id } });
+  revalidatePath('/clients');
+  redirect('/clients');
+}
+
 const CONTACT_EDITABLE_FIELDS = [
   'nom',
   'role',
@@ -98,5 +104,10 @@ export async function updateContactField(id: string, field: ContactField, value:
     data: { [field]: trimmed || null } as Prisma.ContactUpdateInput,
   });
 
+  if (contact.organisationId) revalidatePath(`/clients/${contact.organisationId}`);
+}
+
+export async function deleteContact(id: string) {
+  const contact = await prisma.contact.delete({ where: { id } });
   if (contact.organisationId) revalidatePath(`/clients/${contact.organisationId}`);
 }

@@ -1,5 +1,6 @@
 import { EditableField } from '@/components/EditableField';
-import { updateFournisseurField } from '@/app/(app)/orbit/actions';
+import { DeleteButton } from '@/components/DeleteButton';
+import { updateFournisseurField, deleteFournisseur } from '@/app/(app)/orbit/actions';
 import { CATEGORIE_FOURNISSEUR_LABELS } from '@/lib/labels';
 import type { Fournisseur } from '@prisma/client';
 
@@ -11,11 +12,19 @@ const categorieOptions = Object.entries(CATEGORIE_FOURNISSEUR_LABELS).map(([valu
 export function FournisseurDetail({ fournisseur }: { fournisseur: Fournisseur }) {
   return (
     <div className="max-w-md">
-      <EditableField
-        value={fournisseur.nom}
-        onSave={updateFournisseurField.bind(null, fournisseur.id, 'nom')}
-        className="text-xl font-medium"
-      />
+      <div className="flex items-start justify-between gap-2">
+        <EditableField
+          value={fournisseur.nom}
+          onSave={updateFournisseurField.bind(null, fournisseur.id, 'nom')}
+          className="flex-1 text-xl font-medium"
+        />
+        <DeleteButton
+          action={deleteFournisseur.bind(null, fournisseur.id)}
+          confirmMessage={`Supprimer ${fournisseur.nom} ?`}
+          label="Supprimer"
+          className="mt-1 shrink-0 text-xs text-neutral-600 hover:text-red-400"
+        />
+      </div>
 
       <dl className="mt-6 space-y-3 text-sm">
         <div>

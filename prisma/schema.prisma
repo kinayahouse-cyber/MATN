@@ -428,9 +428,10 @@ model Tache {
   projet   Projet @relation(fields: [projetId], references: [id], onDelete: Cascade)
   projetId String
 
-  libelle  String
-  statut   StatutTache @default(A_FAIRE)
-  echeance DateTime?
+  libelle     String
+  description String?
+  statut      StatutTache @default(A_FAIRE)
+  echeance    DateTime?
 
   assigneA   Utilisateur? @relation(fields: [assigneAId], references: [id])
   assigneAId String?

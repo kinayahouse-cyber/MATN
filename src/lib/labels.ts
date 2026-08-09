@@ -58,3 +58,11 @@ export const STATUT_TACHE_LABELS: Record<string, string> = {
   EN_COURS: 'En cours',
   FAIT: 'Fait',
 };
+
+export const STADE_PRODUCTION_LABEL_LABELS: Record<string, string> = {
+  DEVELOPPEMENT: 'Développement',
+  PREPROD: 'Préprod',
+  PROD: 'Prod',
+  DISTRIBUTION: 'Distribution',
+  ARCHIVE: 'Archive',
+};

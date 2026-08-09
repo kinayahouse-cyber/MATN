@@ -40,7 +40,7 @@ export function AddTacheRow({
   if (!open) {
     return (
       <tr>
-        <td colSpan={4} className="py-2">
+        <td colSpan={6} className="py-2">
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -55,6 +55,7 @@ export function AddTacheRow({
 
   return (
     <tr className="border-b border-neutral-900">
+      <td />
       <td className="py-1">
         <input
           ref={libelleRef}
@@ -114,6 +115,7 @@ export function AddTacheRow({
           </button>
         </div>
       </td>
+      <td />
     </tr>
   );
 }

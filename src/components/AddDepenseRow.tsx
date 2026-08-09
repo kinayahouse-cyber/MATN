@@ -30,7 +30,7 @@ export function AddDepenseRow({ projetId }: { projetId: string }) {
   if (!open) {
     return (
       <tr>
-        <td colSpan={3} className="py-2">
+        <td colSpan={4} className="py-2">
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -93,6 +93,7 @@ export function AddDepenseRow({ projetId }: { projetId: string }) {
           </button>
         </div>
       </td>
+      <td />
     </tr>
   );
 }

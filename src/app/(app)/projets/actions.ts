@@ -66,6 +66,34 @@ export async function addJalon(formData: FormData) {
   redirect(`/projets/${projetId}`);
 }
 
+const JALON_EDITABLE_FIELDS = ['libelle', 'date', 'atteint'] as const;
+type JalonField = (typeof JALON_EDITABLE_FIELDS)[number];
+const JALON_DATE_FIELDS = new Set(['date']);
+const JALON_REQUIRED_FIELDS = new Set(['libelle', 'date']);
+
+export async function updateJalonField(id: string, field: JalonField, value: string) {
+  if (!JALON_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
+
+  const trimmed = value.trim();
+  if (!trimmed && JALON_REQUIRED_FIELDS.has(field)) throw new Error('Champ requis');
+
+  let parsed: string | boolean | Date | null = trimmed || null;
+  if (parsed !== null && JALON_DATE_FIELDS.has(field)) parsed = new Date(trimmed);
+  if (field === 'atteint') parsed = trimmed === 'true';
+
+  const jalon = await prisma.jalon.update({
+    where: { id },
+    data: { [field]: parsed } as Prisma.JalonUpdateInput,
+  });
+
+  revalidatePath(`/projets/${jalon.projetId}`);
+}
+
+export async function deleteJalon(id: string) {
+  const jalon = await prisma.jalon.delete({ where: { id } });
+  revalidatePath(`/projets/${jalon.projetId}`);
+}
+
 export async function addDocument(formData: FormData) {
   const projetId = String(formData.get('projetId') ?? '').trim();
   const type = String(formData.get('type') ?? '').trim() as TypeDocument;
@@ -82,6 +110,29 @@ export async function addDocument(formData: FormData) {
   redirect(`/projets/${projetId}`);
 }
 
+const DOCUMENT_EDITABLE_FIELDS = ['type', 'numero', 'statut', 'url'] as const;
+type DocumentField = (typeof DOCUMENT_EDITABLE_FIELDS)[number];
+const DOCUMENT_REQUIRED_FIELDS = new Set(['type', 'statut']);
+
+export async function updateDocumentField(id: string, field: DocumentField, value: string) {
+  if (!DOCUMENT_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
+
+  const trimmed = value.trim();
+  if (!trimmed && DOCUMENT_REQUIRED_FIELDS.has(field)) throw new Error('Champ requis');
+
+  const document = await prisma.document.update({
+    where: { id },
+    data: { [field]: trimmed || null } as Prisma.DocumentUpdateInput,
+  });
+
+  if (document.projetId) revalidatePath(`/projets/${document.projetId}`);
+}
+
+export async function deleteDocument(id: string) {
+  const document = await prisma.document.delete({ where: { id } });
+  if (document.projetId) revalidatePath(`/projets/${document.projetId}`);
+}
+
 const PROJET_EDITABLE_FIELDS = [
   'nom',
   'description',
@@ -93,6 +144,9 @@ const PROJET_EDITABLE_FIELDS = [
   'dateDebut',
   'dateFinPrevue',
   'organisationId',
+  'stadeLabel',
+  'format',
+  'statutDiffusion',
 ] as const;
 type ProjetField = (typeof PROJET_EDITABLE_FIELDS)[number];
 
@@ -119,6 +173,12 @@ export async function updateProjetField(id: string, field: ProjetField, value: s
   revalidatePath(`/projets/${id}`);
 }
 
+export async function deleteProjet(id: string) {
+  await prisma.projet.delete({ where: { id } });
+  revalidatePath('/projets');
+  redirect('/projets');
+}
+
 export async function createTacheInline(
   projetId: string,
   libelle: string,
@@ -140,7 +200,13 @@ export async function createTacheInline(
   revalidatePath(`/projets/${projetId}`);
 }
 
-const TACHE_EDITABLE_FIELDS = ['libelle', 'statut', 'echeance', 'assigneAId'] as const;
+const TACHE_EDITABLE_FIELDS = [
+  'libelle',
+  'description',
+  'statut',
+  'echeance',
+  'assigneAId',
+] as const;
 type TacheField = (typeof TACHE_EDITABLE_FIELDS)[number];
 const TACHE_DATE_FIELDS = new Set(['echeance']);
 const TACHE_REQUIRED_FIELDS = new Set(['libelle', 'statut']);
@@ -159,6 +225,11 @@ export async function updateTacheField(id: string, field: TacheField, value: str
     data: { [field]: parsed } as Prisma.TacheUpdateInput,
   });
 
+  revalidatePath(`/projets/${tache.projetId}`);
+}
+
+export async function deleteTache(id: string) {
+  const tache = await prisma.tache.delete({ where: { id } });
   revalidatePath(`/projets/${tache.projetId}`);
 }
 
@@ -197,6 +268,11 @@ export async function updateDepenseField(id: string, field: DepenseField, value:
     data: { [field]: parsed } as Prisma.DepenseUpdateInput,
   });
 
+  if (depense.projetId) revalidatePath(`/projets/${depense.projetId}`);
+}
+
+export async function deleteDepense(id: string) {
+  const depense = await prisma.depense.delete({ where: { id } });
   if (depense.projetId) revalidatePath(`/projets/${depense.projetId}`);
 }
 

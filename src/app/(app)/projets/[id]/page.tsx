@@ -5,20 +5,32 @@ import {
   STADE_PROJET_LABELS,
   ENGAGEMENT_LABELS,
   TYPE_DOCUMENT_LABELS,
+  STATUT_DOCUMENT_LABELS,
   STATUT_TACHE_LABELS,
+  STADE_PRODUCTION_LABEL_LABELS,
 } from '@/lib/labels';
 import {
   addJalon,
+  updateJalonField,
+  deleteJalon,
   addDocument,
+  updateDocumentField,
+  deleteDocument,
   updateProjetField,
+  deleteProjet,
   updateTacheField,
+  deleteTache,
   updateDepenseField,
+  deleteDepense,
   addDecision,
   addNote,
 } from '../actions';
 import { EditableField } from '@/components/EditableField';
+import { DeleteButton } from '@/components/DeleteButton';
 import { AddTacheRow } from '@/components/AddTacheRow';
 import { AddDepenseRow } from '@/components/AddDepenseRow';
+import { JalonAtteintCheckbox } from '@/components/JalonAtteintCheckbox';
+import { TacheDoneCheckbox } from '@/components/TacheDoneCheckbox';
 
 const STADE_ORDER = ['DEVIS_ENVOYE', 'SIGNE', 'EN_COURS', 'LIVRE', 'CLOS'] as const;
 
@@ -31,6 +43,18 @@ const stadeOptions = [...STADE_ORDER, 'ABANDONNE'].map((value) => ({
   label: STADE_PROJET_LABELS[value],
 }));
 const statutTacheOptions = Object.entries(STATUT_TACHE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+const typeDocumentOptions = Object.entries(TYPE_DOCUMENT_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+const statutDocumentOptions = Object.entries(STATUT_DOCUMENT_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+const stadeLabelOptions = Object.entries(STADE_PRODUCTION_LABEL_LABELS).map(([value, label]) => ({
   value,
   label,
 }));
@@ -203,15 +227,62 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               </Link>
             )}
           </div>
-          <EditableField
-            value={projet.stade}
-            onSave={updateProjetField.bind(null, projet.id, 'stade')}
-            type="select"
-            options={stadeOptions}
-            className="rounded-full border border-neutral-800 px-3 py-1 text-xs"
-          />
+          <div className="flex flex-col items-end gap-2">
+            <EditableField
+              value={projet.stade}
+              onSave={updateProjetField.bind(null, projet.id, 'stade')}
+              type="select"
+              options={stadeOptions}
+              className="rounded-full border border-neutral-800 px-3 py-1 text-xs"
+            />
+            <DeleteButton
+              action={deleteProjet.bind(null, projet.id)}
+              confirmMessage={`Supprimer le projet ${projet.nom} ? Jalons, fichiers, tâches et dépenses associés seront aussi supprimés.`}
+              label="Supprimer le projet"
+              className="text-xs text-neutral-600 hover:text-red-400"
+            />
+          </div>
         </div>
       </section>
+
+      {/* Label — champs propres au track LABEL (ADR-008) */}
+      {projet.track === 'LABEL' && (
+        <section className="border-t border-neutral-800 pt-4">
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Label</p>
+          <div className="mt-2 grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-neutral-500">
+                Stade production
+              </p>
+              <EditableField
+                value={projet.stadeLabel ?? ''}
+                onSave={updateProjetField.bind(null, projet.id, 'stadeLabel')}
+                type="select"
+                options={stadeLabelOptions}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Format</p>
+              <EditableField
+                value={projet.format ?? ''}
+                onSave={updateProjetField.bind(null, projet.id, 'format')}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-neutral-500">
+                Statut diffusion
+              </p>
+              <EditableField
+                value={projet.statutDiffusion ?? ''}
+                onSave={updateProjetField.bind(null, projet.id, 'statutDiffusion')}
+                className="mt-1"
+              />
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         {/* Jalons */}
@@ -220,20 +291,22 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           {projet.jalons.length === 0 ? (
             <p className="mt-3 text-sm text-neutral-600">Aucun jalon.</p>
           ) : (
-            <ul className="mt-3 space-y-3 border-l border-neutral-800 pl-4">
+            <ul className="mt-3 space-y-2 border-l border-neutral-800 pl-4">
               {projet.jalons.map((jalon) => (
-                <li key={jalon.id} className="flex items-center justify-between text-sm">
-                  <div>
-                    <span className="text-neutral-500">{formatDate(jalon.date)}</span>{' '}
-                    <span className="ml-2 font-medium">{jalon.libelle}</span>
-                  </div>
-                  <span
-                    className={
-                      jalon.atteint ? 'text-xs text-neutral-400' : 'text-xs text-neutral-600'
-                    }
-                  >
-                    {jalon.atteint ? 'Atteint' : 'À venir'}
-                  </span>
+                <li key={jalon.id} className="flex items-center gap-2 text-sm">
+                  <JalonAtteintCheckbox id={jalon.id} atteint={jalon.atteint} />
+                  <EditableField
+                    value={jalon.date.toISOString().slice(0, 10)}
+                    onSave={updateJalonField.bind(null, jalon.id, 'date')}
+                    type="date"
+                    className="w-28 shrink-0 text-neutral-500"
+                  />
+                  <EditableField
+                    value={jalon.libelle}
+                    onSave={updateJalonField.bind(null, jalon.id, 'libelle')}
+                    className="flex-1 font-medium"
+                  />
+                  <DeleteButton action={deleteJalon.bind(null, jalon.id)} />
                 </li>
               ))}
             </ul>
@@ -271,25 +344,49 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           ) : (
             <ul className="mt-3 divide-y divide-neutral-800">
               {projet.documents.map((doc) => (
-                <li key={doc.id} className="flex items-center justify-between py-2 text-sm">
-                  <div>
-                    {doc.url ? (
+                <li key={doc.id} className="py-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <EditableField
+                      value={doc.type}
+                      onSave={updateDocumentField.bind(null, doc.id, 'type')}
+                      type="select"
+                      options={typeDocumentOptions}
+                      className="w-32 shrink-0 font-medium"
+                    />
+                    <EditableField
+                      value={doc.numero ?? ''}
+                      onSave={updateDocumentField.bind(null, doc.id, 'numero')}
+                      placeholder="N° —"
+                      className="flex-1"
+                    />
+                    <EditableField
+                      value={doc.statut}
+                      onSave={updateDocumentField.bind(null, doc.id, 'statut')}
+                      type="select"
+                      options={statutDocumentOptions}
+                      className="w-28 shrink-0 text-xs text-neutral-500"
+                    />
+                    <DeleteButton action={deleteDocument.bind(null, doc.id)} />
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 pl-1">
+                    <span className="text-xs text-neutral-600">Lien :</span>
+                    <EditableField
+                      value={doc.url ?? ''}
+                      onSave={updateDocumentField.bind(null, doc.id, 'url')}
+                      placeholder="https://…"
+                      className="flex-1 text-xs text-neutral-500"
+                    />
+                    {doc.url && (
                       <a
                         href={doc.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="font-medium hover:underline"
+                        className="text-xs text-neutral-500 hover:underline"
                       >
-                        {doc.numero ?? doc.type}
+                        Ouvrir
                       </a>
-                    ) : (
-                      <p className="font-medium">{doc.numero ?? doc.type}</p>
                     )}
-                    <p className="text-xs text-neutral-500">
-                      {TYPE_DOCUMENT_LABELS[doc.type] ?? doc.type}
-                    </p>
                   </div>
-                  <span className="text-xs text-neutral-500">{doc.statut}</span>
                 </li>
               ))}
             </ul>
@@ -346,19 +443,32 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           <table className="mt-3 w-full text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-800 text-xs uppercase text-neutral-500">
+                <th className="w-6 pb-1 font-normal" />
                 <th className="pb-1 font-normal">Libellé</th>
                 <th className="pb-1 font-normal">Statut</th>
                 <th className="pb-1 font-normal">Échéance</th>
                 <th className="pb-1 font-normal">Assigné à</th>
+                <th className="w-6 pb-1 font-normal" />
               </tr>
             </thead>
             <tbody>
               {projet.taches.map((t) => (
-                <tr key={t.id} className="border-b border-neutral-900">
+                <tr key={t.id} className="border-b border-neutral-900 align-top">
+                  <td className="py-2">
+                    <TacheDoneCheckbox id={t.id} statut={t.statut} />
+                  </td>
                   <td className="py-1">
                     <EditableField
                       value={t.libelle}
                       onSave={updateTacheField.bind(null, t.id, 'libelle')}
+                      className={t.statut === 'FAIT' ? 'text-neutral-500 line-through' : ''}
+                    />
+                    <EditableField
+                      value={t.description ?? ''}
+                      onSave={updateTacheField.bind(null, t.id, 'description')}
+                      type="textarea"
+                      placeholder="Description —"
+                      className="text-xs text-neutral-500"
                     />
                   </td>
                   <td className="py-1 text-neutral-400">
@@ -387,6 +497,9 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                       }))}
                     />
                   </td>
+                  <td className="py-2">
+                    <DeleteButton action={deleteTache.bind(null, t.id)} />
+                  </td>
                 </tr>
               ))}
               <AddTacheRow projetId={projet.id} utilisateurs={utilisateurs} />
@@ -411,6 +524,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                 <th className="pb-1 font-normal">Catégorie</th>
                 <th className="pb-1 font-normal">Montant</th>
                 <th className="pb-1 font-normal">Date</th>
+                <th className="w-6 pb-1 font-normal" />
               </tr>
             </thead>
             <tbody>
@@ -435,6 +549,9 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                       onSave={updateDepenseField.bind(null, d.id, 'date')}
                       type="date"
                     />
+                  </td>
+                  <td className="py-1">
+                    <DeleteButton action={deleteDepense.bind(null, d.id)} />
                   </td>
                 </tr>
               ))}

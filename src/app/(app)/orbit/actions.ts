@@ -48,3 +48,9 @@ export async function updateFournisseurField(id: string, field: FournisseurField
   revalidatePath('/orbit');
   revalidatePath(`/orbit/${id}`);
 }
+
+export async function deleteFournisseur(id: string) {
+  await prisma.fournisseur.delete({ where: { id } });
+  revalidatePath('/orbit');
+  redirect('/orbit');
+}
