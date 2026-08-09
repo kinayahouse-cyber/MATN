@@ -35,6 +35,7 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
   const [search, setSearch] = useState('');
   const [trackFilter, setTrackFilter] = useState('');
   const [clientFilter, setClientFilter] = useState('');
+  const [stadeFilter, setStadeFilter] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkMoveTo, setBulkMoveTo] = useState('');
   const [pending, startTransition] = useTransition();
@@ -46,10 +47,11 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
     return projets.filter((p) => {
       if (trackFilter && p.track !== trackFilter) return false;
       if (clientFilter && p.organisationId !== clientFilter) return false;
+      if (stadeFilter && p.stade !== stadeFilter) return false;
       if (q && !p.nom.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [projets, search, trackFilter, clientFilter]);
+  }, [projets, search, trackFilter, clientFilter, stadeFilter]);
 
   const toggleSelected = (id: string) => {
     setSelected((prev) => {
@@ -117,6 +119,18 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
         >
           <option value="">Tous les clients</option>
           {clientOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={stadeFilter}
+          onChange={(e) => setStadeFilter(e.target.value)}
+          className={selectClass}
+        >
+          <option value="">Tous les stades</option>
+          {stadeOptions.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
