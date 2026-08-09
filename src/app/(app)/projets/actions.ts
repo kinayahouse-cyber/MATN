@@ -3,7 +3,8 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import type { Track, Engagement, TypeDocument, StadeProjet, Prisma } from '@prisma/client';
+import { uploadToStorage } from '@/lib/supabase/admin';
+import type { Track, Engagement, TypeDocument, TypeAsset, StadeProjet, Prisma } from '@prisma/client';
 
 export async function createProjet(formData: FormData) {
   const code = String(formData.get('code') ?? '').trim();
@@ -100,7 +101,11 @@ export async function addDocument(formData: FormData) {
   if (!projetId || !type) throw new Error('Champs requis manquants');
 
   const numero = String(formData.get('numero') ?? '').trim() || null;
-  const url = String(formData.get('url') ?? '').trim() || null;
+  const file = formData.get('file');
+  let url = String(formData.get('url') ?? '').trim() || null;
+  if (file instanceof File && file.size > 0) {
+    url = await uploadToStorage(file, `projets/${projetId}/documents`);
+  }
 
   await prisma.document.create({
     data: { projetId, type, numero, url },
@@ -131,6 +136,46 @@ export async function updateDocumentField(id: string, field: DocumentField, valu
 export async function deleteDocument(id: string) {
   const document = await prisma.document.delete({ where: { id } });
   if (document.projetId) revalidatePath(`/projets/${document.projetId}`);
+}
+
+export async function addAsset(formData: FormData) {
+  const projetId = String(formData.get('projetId') ?? '').trim();
+  const type = String(formData.get('type') ?? '').trim() as TypeAsset;
+  const nom = String(formData.get('nom') ?? '').trim();
+  const sourceGenerateurIa = formData.get('sourceGenerateurIa') === 'on';
+  const file = formData.get('file');
+  if (!projetId || !type || !nom || !(file instanceof File) || file.size === 0) {
+    throw new Error('Champs requis manquants');
+  }
+
+  const url = await uploadToStorage(file, `projets/${projetId}/assets`);
+
+  await prisma.asset.create({
+    data: { projetId, type, nom, url, sourceGenerateurIa },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+}
+
+const ASSET_EDITABLE_FIELDS = ['nom', 'type', 'sourceGenerateurIa'] as const;
+type AssetField = (typeof ASSET_EDITABLE_FIELDS)[number];
+
+export async function updateAssetField(id: string, field: AssetField, value: string) {
+  if (!ASSET_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
+
+  const trimmed = value.trim();
+  if (!trimmed && field !== 'sourceGenerateurIa') throw new Error('Champ requis');
+
+  const data: Prisma.AssetUpdateInput =
+    field === 'sourceGenerateurIa' ? { sourceGenerateurIa: trimmed === 'true' } : { [field]: trimmed };
+
+  const asset = await prisma.asset.update({ where: { id }, data });
+  revalidatePath(`/projets/${asset.projetId}`);
+}
+
+export async function deleteAsset(id: string) {
+  const asset = await prisma.asset.delete({ where: { id } });
+  revalidatePath(`/projets/${asset.projetId}`);
 }
 
 const PROJET_EDITABLE_FIELDS = [

@@ -8,6 +8,7 @@ import {
   STATUT_DOCUMENT_LABELS,
   STATUT_TACHE_LABELS,
   STADE_PRODUCTION_LABEL_LABELS,
+  TYPE_ASSET_LABELS,
 } from '@/lib/labels';
 import {
   addJalon,
@@ -16,6 +17,9 @@ import {
   addDocument,
   updateDocumentField,
   deleteDocument,
+  addAsset,
+  updateAssetField,
+  deleteAsset,
   updateProjetField,
   deleteProjet,
   removeContactFromProjet,
@@ -26,6 +30,7 @@ import {
   addDecision,
   addNote,
 } from '../actions';
+import { resolveFileUrl } from '@/lib/supabase/admin';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
 import { AddTacheRow } from '@/components/AddTacheRow';
@@ -57,6 +62,10 @@ const statutDocumentOptions = Object.entries(STATUT_DOCUMENT_LABELS).map(([value
   label,
 }));
 const stadeLabelOptions = Object.entries(STADE_PRODUCTION_LABEL_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+const typeAssetOptions = Object.entries(TYPE_ASSET_LABELS).map(([value, label]) => ({
   value,
   label,
 }));
@@ -94,6 +103,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         contacts: { orderBy: { nom: 'asc' } },
         jalons: { orderBy: { ordre: 'asc' } },
         documents: { orderBy: { createdAt: 'desc' } },
+        assets: { orderBy: { createdAt: 'desc' } },
         decisions: { orderBy: { date: 'desc' }, take: 10 },
         notesMatn: { orderBy: { createdAt: 'desc' }, take: 10 },
         taches: { orderBy: { createdAt: 'asc' } },
@@ -110,6 +120,13 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
   const availableContacts = allContacts
     .filter((c) => !linkedContactIds.has(c.id))
     .map((c) => ({ id: c.id, nom: c.nom, organisationNom: c.organisation?.nom ?? null }));
+
+  const [documentUrls, assetUrls] = await Promise.all([
+    Promise.all(projet.documents.map((doc) => resolveFileUrl(doc.url))),
+    Promise.all(projet.assets.map((asset) => resolveFileUrl(asset.url))),
+  ]);
+  const documentUrlById = new Map(projet.documents.map((doc, i) => [doc.id, documentUrls[i]]));
+  const assetUrlById = new Map(projet.assets.map((asset, i) => [asset.id, assetUrls[i]]));
 
   const totalDepenses = projet.depenses.reduce((sum, d) => sum + Number(d.montant), 0);
 
@@ -415,9 +432,9 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                       placeholder="https://…"
                       className="flex-1 text-xs text-neutral-500"
                     />
-                    {doc.url && (
+                    {documentUrlById.get(doc.id) && (
                       <a
-                        href={doc.url}
+                        href={documentUrlById.get(doc.id)!}
                         target="_blank"
                         rel="noreferrer"
                         className="text-xs text-neutral-500 hover:underline"
@@ -452,17 +469,16 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                 <input name="numero" className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>Lien du fichier</label>
-                <input
-                  name="url"
-                  type="url"
-                  placeholder="https://…"
-                  className={inputClass}
-                />
+                <label className={labelClass}>Fichier</label>
+                <input name="file" type="file" className={inputClass} />
                 <p className="mt-1 text-xs text-neutral-600">
-                  Lien externe (Drive, etc.) — pas de stockage de fichier propre à MATN pour
-                  l&rsquo;instant.
+                  Uploadé dans le stockage MATN. Sinon, colle un lien externe (Drive, etc.)
+                  ci-dessous.
                 </p>
+              </div>
+              <div>
+                <label className={labelClass}>Lien du fichier (si pas d&rsquo;upload)</label>
+                <input name="url" type="url" placeholder="https://…" className={inputClass} />
               </div>
               <button
                 type="submit"
@@ -474,6 +490,103 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           </details>
         </section>
       </div>
+
+      {/* Assets (images, vidéos, sons — stockage MATN) */}
+      <section className="border-t border-neutral-800 pt-4">
+        <h2 className="text-sm font-medium uppercase tracking-wide">Assets</h2>
+        {projet.assets.length === 0 ? (
+          <p className="mt-3 text-sm text-neutral-600">Aucun asset.</p>
+        ) : (
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {projet.assets.map((asset) => {
+              const resolvedUrl = assetUrlById.get(asset.id);
+              return (
+                <div key={asset.id} className="rounded-md border border-neutral-800 p-2">
+                  {asset.type === 'IMAGE' && resolvedUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={resolvedUrl}
+                      alt={asset.nom}
+                      className="h-24 w-full rounded object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-24 w-full items-center justify-center rounded bg-neutral-900 text-xs text-neutral-600">
+                      {TYPE_ASSET_LABELS[asset.type] ?? asset.type}
+                    </div>
+                  )}
+                  <EditableField
+                    value={asset.nom}
+                    onSave={updateAssetField.bind(null, asset.id, 'nom')}
+                    className="mt-2 text-xs font-medium"
+                  />
+                  <div className="mt-1 flex items-center justify-between">
+                    <EditableField
+                      value={asset.type}
+                      onSave={updateAssetField.bind(null, asset.id, 'type')}
+                      type="select"
+                      options={typeAssetOptions}
+                      className="text-xs text-neutral-500"
+                    />
+                    <DeleteButton action={deleteAsset.bind(null, asset.id)} />
+                  </div>
+                  {asset.sourceGenerateurIa && (
+                    <span className="mt-1 inline-block rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] uppercase text-neutral-400">
+                      IA
+                    </span>
+                  )}
+                  {resolvedUrl && (
+                    <a
+                      href={resolvedUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 block text-xs text-neutral-500 hover:underline"
+                    >
+                      Ouvrir
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm text-neutral-500 hover:text-neutral-300">
+            + Ajouter un asset
+          </summary>
+          <form action={addAsset} className="mt-3 space-y-3">
+            <input type="hidden" name="projetId" value={projet.id} />
+            <div>
+              <label className={labelClass}>Nom</label>
+              <input name="nom" required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Type</label>
+              <select name="type" defaultValue="IMAGE" className={inputClass}>
+                {typeAssetOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Fichier</label>
+              <input name="file" type="file" required className={inputClass} />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-neutral-400">
+              <input type="checkbox" name="sourceGenerateurIa" />
+              Généré par IA
+            </label>
+            <button
+              type="submit"
+              className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950"
+            >
+              Ajouter
+            </button>
+          </form>
+        </details>
+      </section>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         {/* Tâches */}

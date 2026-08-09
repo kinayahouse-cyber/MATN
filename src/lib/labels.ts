@@ -66,3 +66,10 @@ export const STADE_PRODUCTION_LABEL_LABELS: Record<string, string> = {
   DISTRIBUTION: 'Distribution',
   ARCHIVE: 'Archive',
 };
+
+export const TYPE_ASSET_LABELS: Record<string, string> = {
+  IMAGE: 'Image',
+  VIDEO: 'Vidéo',
+  SON: 'Son',
+  DOC: 'Doc',
+};
