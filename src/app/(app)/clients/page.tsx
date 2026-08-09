@@ -1,8 +1,16 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { TRACK_LABELS, TYPE_ORGANISATION_LABELS } from '@/lib/labels';
+import { EditableField } from '@/components/EditableField';
+import { updateOrganisationField } from './actions';
 
 export const dynamic = 'force-dynamic';
+
+const typeOptions = Object.entries(TYPE_ORGANISATION_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+const trackOptions = Object.entries(TRACK_LABELS).map(([value, label]) => ({ value, label }));
 
 export default async function ClientsPage() {
   const clients = await prisma.organisation.findMany({ orderBy: { nom: 'asc' } });
@@ -39,9 +47,28 @@ export default async function ClientsPage() {
                     {c.nom}
                   </Link>
                 </td>
-                <td className="text-neutral-400">{TYPE_ORGANISATION_LABELS[c.type] ?? c.type}</td>
-                <td className="text-neutral-400">{c.track ? TRACK_LABELS[c.track] : '—'}</td>
-                <td className="text-neutral-400">{c.secteur ?? '—'}</td>
+                <td className="text-neutral-400">
+                  <EditableField
+                    value={c.type}
+                    onSave={updateOrganisationField.bind(null, c.id, 'type')}
+                    type="select"
+                    options={typeOptions}
+                  />
+                </td>
+                <td className="text-neutral-400">
+                  <EditableField
+                    value={c.track ?? ''}
+                    onSave={updateOrganisationField.bind(null, c.id, 'track')}
+                    type="select"
+                    options={trackOptions}
+                  />
+                </td>
+                <td className="text-neutral-400">
+                  <EditableField
+                    value={c.secteur ?? ''}
+                    onSave={updateOrganisationField.bind(null, c.id, 'secteur')}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>

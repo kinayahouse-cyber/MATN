@@ -5,9 +5,20 @@ import {
   STADE_PROJET_LABELS,
   ENGAGEMENT_LABELS,
   TYPE_DOCUMENT_LABELS,
+  STATUT_TACHE_LABELS,
 } from '@/lib/labels';
-import { addJalon, addDocument, updateProjetField, addDecision, addNote } from '../actions';
+import {
+  addJalon,
+  addDocument,
+  updateProjetField,
+  updateTacheField,
+  updateDepenseField,
+  addDecision,
+  addNote,
+} from '../actions';
 import { EditableField } from '@/components/EditableField';
+import { AddTacheRow } from '@/components/AddTacheRow';
+import { AddDepenseRow } from '@/components/AddDepenseRow';
 
 const STADE_ORDER = ['DEVIS_ENVOYE', 'SIGNE', 'EN_COURS', 'LIVRE', 'CLOS'] as const;
 
@@ -18,6 +29,10 @@ const engagementOptions = Object.entries(ENGAGEMENT_LABELS).map(([value, label])
 const stadeOptions = [...STADE_ORDER, 'ABANDONNE'].map((value) => ({
   value,
   label: STADE_PROJET_LABELS[value],
+}));
+const statutTacheOptions = Object.entries(STATUT_TACHE_LABELS).map(([value, label]) => ({
+  value,
+  label,
 }));
 
 const inputClass =
@@ -45,18 +60,25 @@ function timeAgo(date: Date) {
 export default async function ProjetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const projet = await prisma.projet.findUnique({
-    where: { id },
-    include: {
-      organisation: true,
-      jalons: { orderBy: { ordre: 'asc' } },
-      documents: { orderBy: { createdAt: 'desc' } },
-      decisions: { orderBy: { date: 'desc' }, take: 10 },
-      notesMatn: { orderBy: { createdAt: 'desc' }, take: 10 },
-    },
-  });
+  const [projet, utilisateurs] = await Promise.all([
+    prisma.projet.findUnique({
+      where: { id },
+      include: {
+        organisation: true,
+        jalons: { orderBy: { ordre: 'asc' } },
+        documents: { orderBy: { createdAt: 'desc' } },
+        decisions: { orderBy: { date: 'desc' }, take: 10 },
+        notesMatn: { orderBy: { createdAt: 'desc' }, take: 10 },
+        taches: { orderBy: { createdAt: 'asc' } },
+        depenses: { orderBy: { date: 'desc' } },
+      },
+    }),
+    prisma.utilisateur.findMany({ orderBy: { email: 'asc' } }),
+  ]);
 
   if (!projet) notFound();
+
+  const totalDepenses = projet.depenses.reduce((sum, d) => sum + Number(d.montant), 0);
 
   // Fusionne Décisions et Notes en un seul flux chronologique pour la barre de capture.
   const feed = [
@@ -314,6 +336,111 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               </button>
             </form>
           </details>
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+        {/* Tâches */}
+        <section>
+          <h2 className="text-sm font-medium uppercase tracking-wide">Tâches</h2>
+          <table className="mt-3 w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-neutral-800 text-xs uppercase text-neutral-500">
+                <th className="pb-1 font-normal">Libellé</th>
+                <th className="pb-1 font-normal">Statut</th>
+                <th className="pb-1 font-normal">Échéance</th>
+                <th className="pb-1 font-normal">Assigné à</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projet.taches.map((t) => (
+                <tr key={t.id} className="border-b border-neutral-900">
+                  <td className="py-1">
+                    <EditableField
+                      value={t.libelle}
+                      onSave={updateTacheField.bind(null, t.id, 'libelle')}
+                    />
+                  </td>
+                  <td className="py-1 text-neutral-400">
+                    <EditableField
+                      value={t.statut}
+                      onSave={updateTacheField.bind(null, t.id, 'statut')}
+                      type="select"
+                      options={statutTacheOptions}
+                    />
+                  </td>
+                  <td className="py-1 text-neutral-400">
+                    <EditableField
+                      value={t.echeance ? t.echeance.toISOString().slice(0, 10) : ''}
+                      onSave={updateTacheField.bind(null, t.id, 'echeance')}
+                      type="date"
+                    />
+                  </td>
+                  <td className="py-1 text-neutral-400">
+                    <EditableField
+                      value={t.assigneAId ?? ''}
+                      onSave={updateTacheField.bind(null, t.id, 'assigneAId')}
+                      type="select"
+                      options={utilisateurs.map((u) => ({
+                        value: u.id,
+                        label: u.nom ?? u.email,
+                      }))}
+                    />
+                  </td>
+                </tr>
+              ))}
+              <AddTacheRow projetId={projet.id} utilisateurs={utilisateurs} />
+            </tbody>
+          </table>
+        </section>
+
+        {/* Dépenses */}
+        <section>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-medium uppercase tracking-wide">Dépenses</h2>
+            {totalDepenses > 0 && (
+              <span className="text-xs text-neutral-500">
+                Total : {formatMontant(totalDepenses)}
+                {budget && ` / ${budget}`}
+              </span>
+            )}
+          </div>
+          <table className="mt-3 w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-neutral-800 text-xs uppercase text-neutral-500">
+                <th className="pb-1 font-normal">Catégorie</th>
+                <th className="pb-1 font-normal">Montant</th>
+                <th className="pb-1 font-normal">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projet.depenses.map((d) => (
+                <tr key={d.id} className="border-b border-neutral-900">
+                  <td className="py-1">
+                    <EditableField
+                      value={d.categorie}
+                      onSave={updateDepenseField.bind(null, d.id, 'categorie')}
+                    />
+                  </td>
+                  <td className="py-1 tabular-nums text-neutral-400">
+                    <EditableField
+                      value={String(d.montant)}
+                      onSave={updateDepenseField.bind(null, d.id, 'montant')}
+                      type="number"
+                    />
+                  </td>
+                  <td className="py-1 text-neutral-400">
+                    <EditableField
+                      value={d.date.toISOString().slice(0, 10)}
+                      onSave={updateDepenseField.bind(null, d.id, 'date')}
+                      type="date"
+                    />
+                  </td>
+                </tr>
+              ))}
+              <AddDepenseRow projetId={projet.id} />
+            </tbody>
+          </table>
         </section>
       </div>
 

@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import type { TypeOrganisation, Track, CanalContact, Registre } from '@prisma/client';
+import type { TypeOrganisation, Track, CanalContact, Registre, Prisma } from '@prisma/client';
 
 export async function createClient(formData: FormData) {
   const nom = String(formData.get('nom') ?? '').trim();
@@ -43,4 +43,60 @@ export async function createContact(formData: FormData) {
 
   revalidatePath(`/clients/${organisationId}`);
   redirect(`/clients/${organisationId}`);
+}
+
+const ORGANISATION_EDITABLE_FIELDS = [
+  'nom',
+  'type',
+  'secteur',
+  'track',
+  'nif',
+  'nis',
+  'rc',
+  'ai',
+  'rib',
+  'notes',
+] as const;
+type OrganisationField = (typeof ORGANISATION_EDITABLE_FIELDS)[number];
+const ORGANISATION_REQUIRED_FIELDS = new Set(['nom', 'type']);
+
+export async function updateOrganisationField(id: string, field: OrganisationField, value: string) {
+  if (!ORGANISATION_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
+
+  const trimmed = value.trim();
+  if (!trimmed && ORGANISATION_REQUIRED_FIELDS.has(field)) throw new Error('Champ requis');
+
+  await prisma.organisation.update({
+    where: { id },
+    data: { [field]: trimmed || null } as Prisma.OrganisationUpdateInput,
+  });
+
+  revalidatePath('/clients');
+  revalidatePath(`/clients/${id}`);
+}
+
+const CONTACT_EDITABLE_FIELDS = [
+  'nom',
+  'role',
+  'canal',
+  'registre',
+  'email',
+  'telephone',
+  'notes',
+] as const;
+type ContactField = (typeof CONTACT_EDITABLE_FIELDS)[number];
+const CONTACT_REQUIRED_FIELDS = new Set(['nom', 'canal', 'registre']);
+
+export async function updateContactField(id: string, field: ContactField, value: string) {
+  if (!CONTACT_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
+
+  const trimmed = value.trim();
+  if (!trimmed && CONTACT_REQUIRED_FIELDS.has(field)) throw new Error('Champ requis');
+
+  const contact = await prisma.contact.update({
+    where: { id },
+    data: { [field]: trimmed || null } as Prisma.ContactUpdateInput,
+  });
+
+  if (contact.organisationId) revalidatePath(`/clients/${contact.organisationId}`);
 }

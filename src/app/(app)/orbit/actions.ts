@@ -38,6 +38,8 @@ export async function updateFournisseurField(id: string, field: FournisseurField
   if (!FOURNISSEUR_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
 
   const trimmed = value.trim();
+  if (!trimmed && field === 'nom') throw new Error('Nom requis');
+
   await prisma.fournisseur.update({
     where: { id },
     data: { [field]: trimmed || null } as Prisma.FournisseurUpdateInput,

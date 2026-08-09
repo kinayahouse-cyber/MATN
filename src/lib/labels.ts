@@ -52,3 +52,9 @@ export const CATEGORIE_FOURNISSEUR_LABELS: Record<string, string> = {
   PROJECT_MANAGEMENT: 'Project Management',
   AUTRE: 'Autre',
 };
+
+export const STATUT_TACHE_LABELS: Record<string, string> = {
+  A_FAIRE: 'À faire',
+  EN_COURS: 'En cours',
+  FAIT: 'Fait',
+};

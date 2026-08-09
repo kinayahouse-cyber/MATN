@@ -2,11 +2,18 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { TRACK_LABELS, TYPE_ORGANISATION_LABELS, STADE_PROJET_LABELS } from '@/lib/labels';
-import { createContact } from '../actions';
+import { createContact, updateOrganisationField, updateContactField } from '../actions';
+import { EditableField } from '@/components/EditableField';
 
 const inputClass =
   'mt-1 w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm';
 const labelClass = 'text-sm text-neutral-400';
+
+const typeOptions = Object.entries(TYPE_ORGANISATION_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+const trackOptions = Object.entries(TRACK_LABELS).map(([value, label]) => ({ value, label }));
 
 export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,12 +33,53 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-medium">{client.nom}</h1>
-        <p className="mt-1 text-sm text-neutral-400">
-          {TYPE_ORGANISATION_LABELS[client.type] ?? client.type}
-          {client.track && ` · ${TRACK_LABELS[client.track]}`}
-          {client.secteur && ` · ${client.secteur}`}
-        </p>
+        <EditableField
+          value={client.nom}
+          onSave={updateOrganisationField.bind(null, client.id, 'nom')}
+          className="text-xl font-medium"
+        />
+        <div className="mt-2 flex flex-wrap gap-4 text-sm text-neutral-400">
+          <EditableField
+            value={client.type}
+            onSave={updateOrganisationField.bind(null, client.id, 'type')}
+            type="select"
+            options={typeOptions}
+          />
+          <EditableField
+            value={client.track ?? ''}
+            onSave={updateOrganisationField.bind(null, client.id, 'track')}
+            type="select"
+            options={trackOptions}
+            placeholder="Track —"
+          />
+          <EditableField
+            value={client.secteur ?? ''}
+            onSave={updateOrganisationField.bind(null, client.id, 'secteur')}
+            placeholder="Secteur —"
+          />
+        </div>
+      </div>
+
+      <section className="grid grid-cols-2 gap-4 border-t border-neutral-800 pt-4 text-sm sm:grid-cols-3 md:grid-cols-6">
+        {(['nif', 'nis', 'rc', 'ai', 'rib'] as const).map((field) => (
+          <div key={field}>
+            <p className="text-xs uppercase tracking-wide text-neutral-500">{field.toUpperCase()}</p>
+            <EditableField
+              value={client[field] ?? ''}
+              onSave={updateOrganisationField.bind(null, client.id, field)}
+              className="mt-1"
+            />
+          </div>
+        ))}
+      </section>
+      <div>
+        <p className="text-xs uppercase tracking-wide text-neutral-500">Notes</p>
+        <EditableField
+          value={client.notes ?? ''}
+          onSave={updateOrganisationField.bind(null, client.id, 'notes')}
+          type="textarea"
+          className="mt-1 text-sm text-neutral-400"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -43,10 +91,28 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
             <ul className="mt-3 divide-y divide-neutral-800">
               {client.contacts.map((contact) => (
                 <li key={contact.id} className="py-2 text-sm">
-                  <p className="font-medium">{contact.nom}</p>
-                  <p className="text-xs text-neutral-500">
-                    {contact.role ?? '—'} {contact.email && `· ${contact.email}`}
-                  </p>
+                  <EditableField
+                    value={contact.nom}
+                    onSave={updateContactField.bind(null, contact.id, 'nom')}
+                    className="font-medium"
+                  />
+                  <div className="mt-1 flex flex-wrap gap-3 text-xs text-neutral-500">
+                    <EditableField
+                      value={contact.role ?? ''}
+                      onSave={updateContactField.bind(null, contact.id, 'role')}
+                      placeholder="Rôle —"
+                    />
+                    <EditableField
+                      value={contact.email ?? ''}
+                      onSave={updateContactField.bind(null, contact.id, 'email')}
+                      placeholder="Email —"
+                    />
+                    <EditableField
+                      value={contact.telephone ?? ''}
+                      onSave={updateContactField.bind(null, contact.id, 'telephone')}
+                      placeholder="Téléphone —"
+                    />
+                  </div>
                 </li>
               ))}
             </ul>

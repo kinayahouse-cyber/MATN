@@ -98,11 +98,14 @@ type ProjetField = (typeof PROJET_EDITABLE_FIELDS)[number];
 
 const PROJET_DATE_FIELDS = new Set(['dateDebut', 'dateFinPrevue']);
 const PROJET_DECIMAL_FIELDS = new Set(['budget', 'budgetInterne']);
+const PROJET_REQUIRED_FIELDS = new Set(['nom', 'stade']);
 
 export async function updateProjetField(id: string, field: ProjetField, value: string) {
   if (!PROJET_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
 
   const trimmed = value.trim();
+  if (!trimmed && PROJET_REQUIRED_FIELDS.has(field)) throw new Error('Champ requis');
+
   let parsed: string | number | Date | null = trimmed || null;
   if (parsed !== null && PROJET_DATE_FIELDS.has(field)) parsed = new Date(trimmed);
   if (parsed !== null && PROJET_DECIMAL_FIELDS.has(field)) parsed = Number(trimmed);
@@ -114,6 +117,87 @@ export async function updateProjetField(id: string, field: ProjetField, value: s
 
   revalidatePath('/projets');
   revalidatePath(`/projets/${id}`);
+}
+
+export async function createTacheInline(
+  projetId: string,
+  libelle: string,
+  echeance: string,
+  assigneAId: string
+) {
+  const trimmed = libelle.trim();
+  if (!trimmed) throw new Error('Libellé requis');
+
+  await prisma.tache.create({
+    data: {
+      projetId,
+      libelle: trimmed,
+      echeance: echeance ? new Date(echeance) : null,
+      assigneAId: assigneAId || null,
+    },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+}
+
+const TACHE_EDITABLE_FIELDS = ['libelle', 'statut', 'echeance', 'assigneAId'] as const;
+type TacheField = (typeof TACHE_EDITABLE_FIELDS)[number];
+const TACHE_DATE_FIELDS = new Set(['echeance']);
+const TACHE_REQUIRED_FIELDS = new Set(['libelle', 'statut']);
+
+export async function updateTacheField(id: string, field: TacheField, value: string) {
+  if (!TACHE_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
+
+  const trimmed = value.trim();
+  if (!trimmed && TACHE_REQUIRED_FIELDS.has(field)) throw new Error('Champ requis');
+
+  let parsed: string | Date | null = trimmed || null;
+  if (parsed !== null && TACHE_DATE_FIELDS.has(field)) parsed = new Date(trimmed);
+
+  const tache = await prisma.tache.update({
+    where: { id },
+    data: { [field]: parsed } as Prisma.TacheUpdateInput,
+  });
+
+  revalidatePath(`/projets/${tache.projetId}`);
+}
+
+export async function createDepenseInline(projetId: string, categorie: string, montant: string) {
+  const trimmedCategorie = categorie.trim();
+  const parsedMontant = Number(montant);
+  if (!trimmedCategorie || !montant.trim() || Number.isNaN(parsedMontant)) {
+    throw new Error('Champs requis manquants');
+  }
+
+  await prisma.depense.create({
+    data: { projetId, categorie: trimmedCategorie, montant: parsedMontant },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+}
+
+const DEPENSE_EDITABLE_FIELDS = ['categorie', 'montant', 'date', 'notes'] as const;
+type DepenseField = (typeof DEPENSE_EDITABLE_FIELDS)[number];
+const DEPENSE_DATE_FIELDS = new Set(['date']);
+const DEPENSE_DECIMAL_FIELDS = new Set(['montant']);
+const DEPENSE_REQUIRED_FIELDS = new Set(['categorie', 'montant', 'date']);
+
+export async function updateDepenseField(id: string, field: DepenseField, value: string) {
+  if (!DEPENSE_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
+
+  const trimmed = value.trim();
+  if (!trimmed && DEPENSE_REQUIRED_FIELDS.has(field)) throw new Error('Champ requis');
+
+  let parsed: string | number | Date | null = trimmed || null;
+  if (parsed !== null && DEPENSE_DATE_FIELDS.has(field)) parsed = new Date(trimmed);
+  if (parsed !== null && DEPENSE_DECIMAL_FIELDS.has(field)) parsed = Number(trimmed);
+
+  const depense = await prisma.depense.update({
+    where: { id },
+    data: { [field]: parsed } as Prisma.DepenseUpdateInput,
+  });
+
+  if (depense.projetId) revalidatePath(`/projets/${depense.projetId}`);
 }
 
 // Capture à friction minimale (Livrable 06 §3) : intitulé + justification suffisent pour logger
