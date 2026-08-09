@@ -1,33 +1,9 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
+import { STADE_PROJET_LABELS, ENGAGEMENT_LABELS, TYPE_DOCUMENT_LABELS } from '@/lib/labels';
 
 const STADE_ORDER = ['DEVIS_ENVOYE', 'SIGNE', 'EN_COURS', 'LIVRE', 'CLOS'] as const;
-
-const STADE_LABELS: Record<string, string> = {
-  DEVIS_ENVOYE: 'Devis',
-  SIGNE: 'Signé',
-  EN_COURS: 'En cours',
-  LIVRE: 'Livré',
-  CLOS: 'Clos',
-  ABANDONNE: 'Abandonné',
-};
-
-const ENGAGEMENT_LABELS: Record<string, string> = {
-  LECTURE: 'Lecture',
-  IDENTITE: 'Identité',
-  FILM: 'Film',
-  EDITION: 'Édition',
-  CAPSULES: 'Capsules',
-  MODULE_ATELIER: 'Module Atelier',
-};
-
-const DOCUMENT_TYPE_LABELS: Record<string, string> = {
-  DEVIS: 'Devis',
-  CONTRAT: 'Contrat',
-  GUIDELINE: 'Guideline',
-  LIVRABLE: 'Livrable',
-  COMPTE_RENDU: 'Compte-rendu',
-};
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(
@@ -106,11 +82,16 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           <div>
             <h1 className="text-xl font-medium">{projet.nom}</h1>
             {projet.organisation && (
-              <p className="mt-1 text-sm text-neutral-400">{projet.organisation.nom}</p>
+              <Link
+                href={`/clients/${projet.organisation.id}`}
+                className="mt-1 block text-sm text-neutral-400 hover:underline"
+              >
+                {projet.organisation.nom}
+              </Link>
             )}
           </div>
           <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-950">
-            {STADE_LABELS[projet.stade] ?? projet.stade}
+            {STADE_PROJET_LABELS[projet.stade] ?? projet.stade}
           </span>
         </div>
       </section>
@@ -154,7 +135,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                   <div>
                     <p className="font-medium">{doc.numero ?? doc.type}</p>
                     <p className="text-xs text-neutral-500">
-                      {DOCUMENT_TYPE_LABELS[doc.type] ?? doc.type}
+                      {TYPE_DOCUMENT_LABELS[doc.type] ?? doc.type}
                     </p>
                   </div>
                   <span className="text-xs text-neutral-500">{doc.statut}</span>
@@ -181,7 +162,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                         : 'border border-neutral-700')
                   }
                 />
-                <span className="text-xs text-neutral-500">{STADE_LABELS[stade]}</span>
+                <span className="text-xs text-neutral-500">{STADE_PROJET_LABELS[stade]}</span>
               </div>
               {i < STADE_ORDER.length - 1 && <div className="mx-2 h-px flex-1 bg-neutral-800" />}
             </div>

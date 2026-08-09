@@ -1,0 +1,39 @@
+import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
+
+export default async function OrbitPage() {
+  const fournisseurs = await prisma.fournisseur.findMany({ orderBy: { nom: 'asc' } });
+
+  return (
+    <div>
+      <h1 className="text-xl font-medium">Orbit</h1>
+      <p className="mt-1 text-sm text-neutral-500">
+        Annuaire des fournisseurs et intervenants — pas de rattachement Projet en MVP (ADR-008).
+      </p>
+
+      {fournisseurs.length === 0 ? (
+        <p className="mt-4 text-sm text-neutral-600">Aucun fournisseur.</p>
+      ) : (
+        <table className="mt-4 w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-neutral-800 text-xs uppercase text-neutral-500">
+              <th className="py-2 font-normal">Nom</th>
+              <th className="font-normal">Catégorie</th>
+              <th className="font-normal">Contact</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fournisseurs.map((f) => (
+              <tr key={f.id} className="border-b border-neutral-900">
+                <td className="py-2 font-medium">{f.nom}</td>
+                <td className="text-neutral-400">{f.categorie ?? '—'}</td>
+                <td className="text-neutral-400">{f.contact ?? f.email ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
