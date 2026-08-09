@@ -259,6 +259,8 @@ model Document {
   numero String? // requis en pratique pour DEVIS ; optionnel pour les autres types
   statut StatutDocument @default(BROUILLON)
   track  Track? // dénormalisé depuis Projet.track à la création
+  url    String? // lien vers le fichier téléchargeable — pas de stockage propre à MATN pour
+  // l'instant (pas d'intégration Supabase Storage) : un simple lien externe/partagé
 
   lignes LigneDocument[] // vide pour les types hors DEVIS
 
@@ -379,10 +381,21 @@ model Asset {
 // Fournisseur — nouvelle entité, module Orbit (ADR-008)
 // ---------------------------------------------------------------------------
 
+// Spécialités métier Kinaya — liste fournie par le fondateur, AUTRE en soupape puisque la liste
+// n'a pas été présentée comme exhaustive.
+enum CategorieFournisseur {
+  CINEMA
+  MOTION
+  WEB
+  COPYWRITING
+  PROJECT_MANAGEMENT
+  AUTRE
+}
+
 model Fournisseur {
-  id        String  @id @default(cuid())
+  id        String                @id @default(cuid())
   nom       String
-  categorie String?
+  categorie CategorieFournisseur?
   contact   String?
   email     String?
   telephone String?

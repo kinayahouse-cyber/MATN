@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
+import { CATEGORIE_FOURNISSEUR_LABELS } from '@/lib/labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +36,14 @@ export default async function OrbitPage() {
           <tbody>
             {fournisseurs.map((f) => (
               <tr key={f.id} className="border-b border-neutral-900">
-                <td className="py-2 font-medium">{f.nom}</td>
-                <td className="text-neutral-400">{f.categorie ?? '—'}</td>
+                <td className="py-2">
+                  <Link href={`/orbit/${f.id}`} className="font-medium hover:underline">
+                    {f.nom}
+                  </Link>
+                </td>
+                <td className="text-neutral-400">
+                  {f.categorie ? CATEGORIE_FOURNISSEUR_LABELS[f.categorie] : '—'}
+                </td>
                 <td className="text-neutral-400">{f.contact ?? f.email ?? '—'}</td>
               </tr>
             ))}

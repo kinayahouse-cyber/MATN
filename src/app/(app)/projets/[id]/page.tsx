@@ -2,13 +2,23 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { STADE_PROJET_LABELS, ENGAGEMENT_LABELS, TYPE_DOCUMENT_LABELS } from '@/lib/labels';
+import { addJalon, addDocument, updateStade } from '../actions';
 
 const STADE_ORDER = ['DEVIS_ENVOYE', 'SIGNE', 'EN_COURS', 'LIVRE', 'CLOS'] as const;
+
+const inputClass =
+  'mt-1 w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm';
+const labelClass = 'text-sm text-neutral-400';
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(
     date
   );
+}
+
+function formatMontant(montant: unknown) {
+  if (montant === null || montant === undefined) return null;
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(montant)) + ' DZD';
 }
 
 function timeAgo(date: Date) {
@@ -55,6 +65,8 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
     .slice(0, 3);
 
   const stadeIndex = STADE_ORDER.indexOf(projet.stade as (typeof STADE_ORDER)[number]);
+  const budget = formatMontant(projet.budget);
+  const budgetInterne = formatMontant(projet.budgetInterne);
 
   return (
     <div className="space-y-8">
@@ -76,6 +88,25 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               Type d&rsquo;engagement : {ENGAGEMENT_LABELS[projet.engagement] ?? projet.engagement}
             </p>
           )}
+
+          {(budget || budgetInterne) && (
+            <div className="mt-4 flex gap-6 text-sm">
+              {budget && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-neutral-500">Budget</p>
+                  <p className="mt-1 font-medium tabular-nums">{budget}</p>
+                </div>
+              )}
+              {budgetInterne && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-neutral-500">
+                    Budget interne
+                  </p>
+                  <p className="mt-1 font-medium tabular-nums">{budgetInterne}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-start justify-between border-t border-neutral-800 pt-4 md:border-l md:border-t-0 md:pl-8 md:pt-0">
@@ -90,9 +121,26 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               </Link>
             )}
           </div>
-          <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-950">
-            {STADE_PROJET_LABELS[projet.stade] ?? projet.stade}
-          </span>
+          <form action={updateStade} className="flex items-center gap-2">
+            <input type="hidden" name="projetId" value={projet.id} />
+            <select
+              name="stade"
+              defaultValue={projet.stade}
+              className="rounded-full border border-neutral-800 bg-transparent px-3 py-1 text-xs"
+            >
+              {[...STADE_ORDER, 'ABANDONNE'].map((s) => (
+                <option key={s} value={s}>
+                  {STADE_PROJET_LABELS[s]}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-950"
+            >
+              OK
+            </button>
+          </form>
         </div>
       </section>
 
@@ -121,6 +169,29 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               ))}
             </ul>
           )}
+
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm text-neutral-500 hover:text-neutral-300">
+              + Ajouter un jalon
+            </summary>
+            <form action={addJalon} className="mt-3 space-y-3">
+              <input type="hidden" name="projetId" value={projet.id} />
+              <div>
+                <label className={labelClass}>Libellé</label>
+                <input name="libelle" required className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Date</label>
+                <input name="date" type="date" required className={inputClass} />
+              </div>
+              <button
+                type="submit"
+                className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950"
+              >
+                Ajouter
+              </button>
+            </form>
+          </details>
         </section>
 
         {/* Files (Documents) */}
@@ -133,7 +204,18 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               {projet.documents.map((doc) => (
                 <li key={doc.id} className="flex items-center justify-between py-2 text-sm">
                   <div>
-                    <p className="font-medium">{doc.numero ?? doc.type}</p>
+                    {doc.url ? (
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium hover:underline"
+                      >
+                        {doc.numero ?? doc.type}
+                      </a>
+                    ) : (
+                      <p className="font-medium">{doc.numero ?? doc.type}</p>
+                    )}
                     <p className="text-xs text-neutral-500">
                       {TYPE_DOCUMENT_LABELS[doc.type] ?? doc.type}
                     </p>
@@ -143,6 +225,48 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               ))}
             </ul>
           )}
+
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm text-neutral-500 hover:text-neutral-300">
+              + Ajouter un fichier
+            </summary>
+            <form action={addDocument} className="mt-3 space-y-3">
+              <input type="hidden" name="projetId" value={projet.id} />
+              <div>
+                <label className={labelClass}>Type</label>
+                <select name="type" defaultValue="LIVRABLE" className={inputClass}>
+                  {Object.entries(TYPE_DOCUMENT_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Numéro (optionnel)</label>
+                <input name="numero" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Lien du fichier</label>
+                <input
+                  name="url"
+                  type="url"
+                  placeholder="https://…"
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-neutral-600">
+                  Lien externe (Drive, etc.) — pas de stockage de fichier propre à MATN pour
+                  l&rsquo;instant.
+                </p>
+              </div>
+              <button
+                type="submit"
+                className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-950"
+              >
+                Ajouter
+              </button>
+            </form>
+          </details>
         </section>
       </div>
 

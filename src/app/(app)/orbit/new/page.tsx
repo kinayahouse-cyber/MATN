@@ -1,4 +1,5 @@
 import { createFournisseur } from '../actions';
+import { CATEGORIE_FOURNISSEUR_LABELS } from '@/lib/labels';
 
 const inputClass =
   'mt-1 w-full rounded-md border border-neutral-800 bg-transparent px-3 py-2 text-sm';
@@ -15,7 +16,14 @@ export default function NewFournisseurPage() {
         </div>
         <div>
           <label className={labelClass}>Catégorie</label>
-          <input name="categorie" className={inputClass} />
+          <select name="categorie" defaultValue="" className={inputClass}>
+            <option value="">—</option>
+            {Object.entries(CATEGORIE_FOURNISSEUR_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className={labelClass}>Contact</label>

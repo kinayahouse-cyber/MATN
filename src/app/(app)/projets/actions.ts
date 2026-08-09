@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import type { Track, Engagement } from '@prisma/client';
+import type { Track, Engagement, StadeProjet, TypeDocument } from '@prisma/client';
 
 export async function createProjet(formData: FormData) {
   const code = String(formData.get('code') ?? '').trim();
@@ -28,4 +28,45 @@ export async function createProjet(formData: FormData) {
 
   revalidatePath('/projets');
   redirect(`/projets/${projet.id}`);
+}
+
+export async function addJalon(formData: FormData) {
+  const projetId = String(formData.get('projetId') ?? '').trim();
+  const libelle = String(formData.get('libelle') ?? '').trim();
+  const dateRaw = String(formData.get('date') ?? '').trim();
+  if (!projetId || !libelle || !dateRaw) throw new Error('Champs requis manquants');
+
+  await prisma.jalon.create({
+    data: { projetId, libelle, date: new Date(dateRaw) },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+  redirect(`/projets/${projetId}`);
+}
+
+export async function addDocument(formData: FormData) {
+  const projetId = String(formData.get('projetId') ?? '').trim();
+  const type = String(formData.get('type') ?? '').trim() as TypeDocument;
+  if (!projetId || !type) throw new Error('Champs requis manquants');
+
+  const numero = String(formData.get('numero') ?? '').trim() || null;
+  const url = String(formData.get('url') ?? '').trim() || null;
+
+  await prisma.document.create({
+    data: { projetId, type, numero, url },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+  redirect(`/projets/${projetId}`);
+}
+
+export async function updateStade(formData: FormData) {
+  const projetId = String(formData.get('projetId') ?? '').trim();
+  const stade = String(formData.get('stade') ?? '').trim() as StadeProjet;
+  if (!projetId || !stade) throw new Error('Champs requis manquants');
+
+  await prisma.projet.update({ where: { id: projetId }, data: { stade } });
+
+  revalidatePath(`/projets/${projetId}`);
+  redirect(`/projets/${projetId}`);
 }

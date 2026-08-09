@@ -43,3 +43,12 @@ export const STATUT_DOCUMENT_LABELS: Record<string, string> = {
   SIGNE: 'Signé',
   REFUSE: 'Refusé',
 };
+
+export const CATEGORIE_FOURNISSEUR_LABELS: Record<string, string> = {
+  CINEMA: 'Cinéma',
+  MOTION: 'Motion',
+  WEB: 'Web',
+  COPYWRITING: 'Copywriting',
+  PROJECT_MANAGEMENT: 'Project Management',
+  AUTRE: 'Autre',
+};
