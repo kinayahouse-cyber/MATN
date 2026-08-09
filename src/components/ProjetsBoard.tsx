@@ -192,7 +192,7 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
       {view === 'list' ? (
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-line-strong text-xs uppercase tracking-wide text-muted">
+            <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
               <th className="w-6 py-2 font-normal">
                 <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} />
               </th>

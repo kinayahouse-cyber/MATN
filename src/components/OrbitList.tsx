@@ -68,7 +68,7 @@ export function OrbitList({ fournisseurs }: { fournisseurs: Fournisseur[] }) {
       ) : (
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-line-strong text-xs uppercase tracking-wide text-muted">
+            <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
               <th className="py-2 font-normal">Nom</th>
               <th className="font-normal">Catégorie</th>
               <th className="font-normal">Contact</th>

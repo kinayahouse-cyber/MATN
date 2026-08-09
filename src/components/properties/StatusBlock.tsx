@@ -43,11 +43,11 @@ export function StatusBlock({
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className={`w-full bg-accent px-4 py-3 text-sm uppercase tracking-wide text-bg transition-opacity duration-fast hover:opacity-90 ${
+      className={`w-full bg-accent px-4 py-4 text-base uppercase tracking-wide text-bg transition-opacity duration-fast hover:opacity-90 ${
         pending ? 'opacity-50' : ''
       }`}
     >
-      {STADE_PROJET_LABELS[value] ?? value}
+      <span className="border-b border-bg pb-0.5">{STADE_PROJET_LABELS[value] ?? value}</span>
     </button>
   );
 }

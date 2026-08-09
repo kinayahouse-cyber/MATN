@@ -209,63 +209,72 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           </details>
         </section>
 
-        {/* ---------- Identité + Description ---------- */}
-        <section className={`${CELL} border-b border-line-strong`}>
-          <div className="flex flex-wrap items-start justify-between gap-6">
-            <div className="min-w-0 flex-1">
-              <Eyebrow>Overview</Eyebrow>
+        {/* ---------- Description, puis identité + statut ---------- */}
+        <section className="relative flex min-h-0 flex-col border-b border-line-strong">
+          {/* Bloc haut : Overview / Description / Scopes — occupe la hauteur disponible */}
+          <div className="min-h-0 flex-1 overflow-y-auto p-8">
+            <Eyebrow>Overview</Eyebrow>
+            <div className="mt-5">
+              <SectionTitle size="xl">Description</SectionTitle>
+            </div>
+            <EditableField
+              value={projet.description ?? ''}
+              onSave={updateProjetField.bind(null, projet.id, 'description')}
+              type="textarea"
+              placeholder="Aucune description."
+              className="mt-6 max-w-3xl text-sm leading-relaxed text-fg"
+            />
+
+            <div className="mt-8 flex items-start justify-between gap-8">
+              {/* Scopes : contenu non encore modélisé (ADR-009) — placeholder */}
+              <div>
+                <SectionTitle size="md" uppercase={false}>
+                  Scopes&nbsp;:
+                </SectionTitle>
+                <p className="mt-2 text-sm text-muted">À définir.</p>
+              </div>
+              <div className="text-right">
+                <Eyebrow>Type d&rsquo;engagements</Eyebrow>
+                <EditableField
+                  value={projet.engagement ?? ''}
+                  onSave={updateProjetField.bind(null, projet.id, 'engagement')}
+                  type="select"
+                  options={engagementOptions}
+                  className="mt-2 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Bloc bas : nom du projet / client, séparé du statut par une ligne verticale */}
+          <div className="grid shrink-0 grid-cols-[1fr_auto] border-t border-line-strong">
+            <div className="min-w-0 px-8 py-6">
               <EditableField
                 value={projet.nom}
                 onSave={updateProjetField.bind(null, projet.id, 'nom')}
-                className="mt-3 font-display text-3xl tracking-tight"
+                className="font-display text-3xl tracking-tight md:text-4xl [&_button]:border-b-2 [&_button]:border-fg [&_button]:pb-1"
               />
-              <div className="mt-1 flex items-center gap-3 text-sm text-muted">
+              <div className="mt-3">
                 {projet.organisation ? (
                   <Link
                     href={`/clients/${projet.organisation.id}`}
-                    className="border-b border-line-strong pb-0.5 hover:text-fg"
+                    className="border-b border-fg pb-0.5 text-sm text-muted hover:text-fg"
                   >
                     {projet.organisation.nom}
                   </Link>
                 ) : (
-                  <span>Projet interne</span>
+                  <span className="border-b border-fg pb-0.5 text-sm text-muted">
+                    Projet interne
+                  </span>
                 )}
-                <span className="font-mono text-xs">{projet.code}</span>
               </div>
+              <p className="mt-3 font-mono text-xs text-muted">{projet.code}</p>
             </div>
-            <div className="w-44 shrink-0">
+
+            <div className="flex w-64 items-center border-l border-line-strong px-8 py-6">
               <StatusBlock
                 value={projet.stade}
                 onSave={updateProjetField.bind(null, projet.id, 'stade')}
-              />
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <SectionTitle size="lg">Description</SectionTitle>
-          </div>
-          <EditableField
-            value={projet.description ?? ''}
-            onSave={updateProjetField.bind(null, projet.id, 'description')}
-            type="textarea"
-            placeholder="Aucune description."
-            className="mt-4 max-w-2xl text-sm leading-relaxed text-fg"
-          />
-
-          <div className="mt-8 grid max-w-lg grid-cols-2 gap-8">
-            <div>
-              {/* Scopes : contenu non encore modélisé (ADR-009) — placeholder */}
-              <Eyebrow>Scopes</Eyebrow>
-              <p className="mt-2 px-1.5 text-sm text-muted">À définir.</p>
-            </div>
-            <div>
-              <Eyebrow>Type d&rsquo;engagement</Eyebrow>
-              <EditableField
-                value={projet.engagement ?? ''}
-                onSave={updateProjetField.bind(null, projet.id, 'engagement')}
-                type="select"
-                options={engagementOptions}
-                className="mt-2 text-sm"
               />
             </div>
           </div>
@@ -367,7 +376,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           <SectionTitle size="xl">Tâches</SectionTitle>
           <table className="mt-8 w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-line-strong text-xs uppercase tracking-wide text-muted">
+              <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
                 <th className="w-6 pb-2 font-normal" />
                 <th className="pb-2 font-normal">Libellé</th>
                 <th className="pb-2 font-normal">Statut</th>
@@ -558,7 +567,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           </div>
           <table className="mt-6 w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-line-strong text-xs uppercase tracking-wide text-muted">
+              <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
                 <th className="pb-2 font-normal">Catégorie</th>
                 <th className="pb-2 font-normal">Montant</th>
                 <th className="pb-2 font-normal">Date</th>

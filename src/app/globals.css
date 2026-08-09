@@ -12,7 +12,9 @@ html {
   --matn-fg: 12 12 11;
   --matn-muted: 107 104 98;
   --matn-line: 214 210 202;
-  --matn-line-strong: 160 156 147;
+  /* Lignes structurelles primaires : quasi-noires, comme sur la référence — ce sont les
+     divisions majeures de la grille, pas des séparateurs de lignes de tableau. */
+  --matn-line-strong: 26 26 24;
   --matn-accent: 232 98 44;
 }
 
