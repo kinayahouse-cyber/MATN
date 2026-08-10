@@ -1,18 +1,17 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { Fragment, useCallback, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
 import { AddProjetRow } from '@/components/AddProjetRow';
 import { ProjetCard } from '@/components/ProjetCard';
 import { StatusDot } from '@/components/properties/Status';
-import { ViewTabs } from '@/components/database/ViewTabs';
-import { Toolbar, toolbarInputClass } from '@/components/database/Toolbar';
+import { DatabaseToolbar } from '@/components/database/DatabaseToolbar';
+import { useDatabaseView } from '@/components/database/useDatabaseView';
+import type { PropertyDef } from '@/components/database/types';
 import { updateProjetField, deleteProjet, deleteProjets, moveProjets } from '@/app/(app)/projets/actions';
 import { TRACK_LABELS, STADE_PROJET_LABELS } from '@/lib/labels';
-
-const STADE_COLUMNS = ['DEVIS_ENVOYE', 'SIGNE', 'EN_COURS', 'LIVRE', 'CLOS', 'ABANDONNE'] as const;
 
 const trackOptions = Object.entries(TRACK_LABELS).map(([value, label]) => ({ value, label }));
 const stadeOptions = Object.entries(STADE_PROJET_LABELS).map(([value, label]) => ({
@@ -34,127 +33,164 @@ type Projet = {
 };
 
 export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients: Client[] }) {
-  const [view, setView] = useState<'list' | 'board'>('list');
-  const [search, setSearch] = useState('');
-  const [trackFilter, setTrackFilter] = useState('');
-  const [clientFilter, setClientFilter] = useState('');
-  const [stadeFilter, setStadeFilter] = useState('');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkMoveTo, setBulkMoveTo] = useState('');
   const [pending, startTransition] = useTransition();
+  const clientOptions = useMemo(
+    () => clients.map((c) => ({ value: c.id, label: c.nom })),
+    [clients]
+  );
 
-  const clientOptions = clients.map((c) => ({ value: c.id, label: c.nom }));
+  // Définitions de propriétés : une seule source pour filtre, tri, groupement et visibilité.
+  const properties = useMemo<PropertyDef<Projet>[]>(
+    () => [
+      { key: 'code', label: 'Code', getValue: (p) => p.code, groupable: false },
+      { key: 'nom', label: 'Nom', getValue: (p) => p.nom, alwaysVisible: true, groupable: false },
+      {
+        key: 'client',
+        label: 'Client',
+        getValue: (p) => p.organisationId ?? '',
+        format: (v) => clients.find((c) => c.id === v)?.nom ?? v,
+        options: clientOptions,
+      },
+      {
+        key: 'track',
+        label: 'Track',
+        getValue: (p) => p.track ?? '',
+        format: (v) => TRACK_LABELS[v] ?? v,
+        options: trackOptions,
+      },
+      {
+        key: 'stade',
+        label: 'Stade',
+        getValue: (p) => p.stade,
+        format: (v) => STADE_PROJET_LABELS[v] ?? v,
+        options: stadeOptions,
+      },
+    ],
+    [clients, clientOptions]
+  );
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return projets.filter((p) => {
-      if (trackFilter && p.track !== trackFilter) return false;
-      if (clientFilter && p.organisationId !== clientFilter) return false;
-      if (stadeFilter && p.stade !== stadeFilter) return false;
-      if (q && !p.nom.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [projets, search, trackFilter, clientFilter, stadeFilter]);
+  const searchKeys = useCallback((p: Projet) => [p.nom, p.code], []);
 
-  const toggleSelected = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const view = useDatabaseView<Projet>({ rows: projets, properties, searchKeys });
+  const { state, filtered, groups, isVisible } = view;
 
-  const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selected.has(p.id));
-  const toggleSelectAll = () => {
-    setSelected(allFilteredSelected ? new Set() : new Set(filtered.map((p) => p.id)));
-  };
-
-  const clearSelection = () => setSelected(new Set());
+  // La sélection vit dans l'état de vue local mais reste indépendante des filtres.
+  const selected = useSelection(filtered);
 
   const bulkDelete = () => {
-    if (!window.confirm(`Supprimer ${selected.size} projet(s) ?`)) return;
-    const ids = Array.from(selected);
+    if (!window.confirm(`Supprimer ${selected.ids.size} projet(s) ?`)) return;
+    const ids = Array.from(selected.ids);
     startTransition(async () => {
       await deleteProjets(ids);
-      clearSelection();
+      selected.clear();
     });
   };
 
-  const bulkMove = () => {
-    if (!bulkMoveTo) return;
-    const ids = Array.from(selected);
+  const bulkMove = (stade: string) => {
+    if (!stade) return;
+    const ids = Array.from(selected.ids);
     startTransition(async () => {
-      await moveProjets(ids, bulkMoveTo);
-      clearSelection();
-      setBulkMoveTo('');
+      await moveProjets(ids, stade);
+      selected.clear();
     });
   };
+
+  // En vue Board, le groupement pilote les colonnes ; par défaut on retombe sur le stade.
+  const boardGroups = useMemo(() => {
+    if (groups) return groups;
+    const prop = properties.find((p) => p.key === 'stade')!;
+    return stadeOptions.map((o) => ({
+      key: o.value,
+      label: o.label,
+      rows: filtered.filter((p) => prop.getValue(p) === o.value),
+    }));
+  }, [groups, filtered, properties]);
+
+  const renderRow = (p: Projet) => (
+    <tr key={p.id} className="border-b border-line">
+      <td className="py-2">
+        <input
+          type="checkbox"
+          aria-label={`Sélectionner ${p.nom}`}
+          checked={selected.ids.has(p.id)}
+          onChange={() => selected.toggle(p.id)}
+        />
+      </td>
+      {isVisible('code') && <td className="font-mono text-xs text-muted">{p.code}</td>}
+      <td>
+        <Link href={`/projets/${p.id}`} className="hover:underline">
+          {p.nom}
+        </Link>
+      </td>
+      {isVisible('client') && (
+        <td className="text-muted">
+          <EditableField
+            value={p.organisationId ?? ''}
+            onSave={updateProjetField.bind(null, p.id, 'organisationId')}
+            type="select"
+            options={clientOptions}
+          />
+        </td>
+      )}
+      {isVisible('track') && (
+        <td className="text-muted">
+          <EditableField
+            value={p.track ?? ''}
+            onSave={updateProjetField.bind(null, p.id, 'track')}
+            type="select"
+            options={trackOptions}
+          />
+        </td>
+      )}
+      {isVisible('stade') && (
+        <td className="text-muted">
+          <div className="flex items-center gap-2">
+            <StatusDot active={p.stade === 'EN_COURS'} muted={p.stade === 'ABANDONNE'} />
+            <EditableField
+              value={p.stade}
+              onSave={updateProjetField.bind(null, p.id, 'stade')}
+              type="select"
+              options={stadeOptions}
+            />
+          </div>
+        </td>
+      )}
+      <td>
+        <DeleteButton
+          action={deleteProjet.bind(null, p.id)}
+          confirmMessage={`Supprimer le projet ${p.nom} ? Jalons, fichiers, tâches et dépenses associés seront aussi supprimés.`}
+        />
+      </td>
+    </tr>
+  );
+
+  const colCount =
+    3 + [isVisible('code'), isVisible('client'), isVisible('track'), isVisible('stade')].filter(
+      Boolean
+    ).length;
 
   return (
     <div>
-      <Toolbar>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher…"
-          className={`${toolbarInputClass} min-w-[10rem] flex-1`}
-        />
-        <select
-          value={trackFilter}
-          onChange={(e) => setTrackFilter(e.target.value)}
-          className={toolbarInputClass}
-        >
-          <option value="">Tous les tracks</option>
-          {trackOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={clientFilter}
-          onChange={(e) => setClientFilter(e.target.value)}
-          className={toolbarInputClass}
-        >
-          <option value="">Tous les clients</option>
-          {clientOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={stadeFilter}
-          onChange={(e) => setStadeFilter(e.target.value)}
-          className={toolbarInputClass}
-        >
-          <option value="">Tous les stades</option>
-          {stadeOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <div className="ml-auto">
-          <ViewTabs
-            value={view}
-            onChange={setView}
-            options={[
-              { value: 'list', label: 'Liste' },
-              { value: 'board', label: 'Cartes' },
-            ]}
-          />
-        </div>
-      </Toolbar>
+      <DatabaseToolbar
+        view={view}
+        properties={properties}
+        views={['list', 'board']}
+        createSlot={
+          <Link href="/projets/new" className="text-sm text-muted hover:text-fg">
+            + Nouveau
+          </Link>
+        }
+      />
 
-      {view === 'list' && selected.size > 0 && (
-        <div className="mb-2 flex items-center gap-3 border border-line bg-line/20 px-3 py-2 text-sm">
-          <span className="text-muted">{selected.size} sélectionné(s)</span>
+      {state.view === 'list' && selected.ids.size > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-3 border border-line bg-line/20 px-3 py-2 text-sm">
+          <span className="text-muted">{selected.ids.size} sélectionné(s)</span>
           <select
-            value={bulkMoveTo}
-            onChange={(e) => setBulkMoveTo(e.target.value)}
-            className={toolbarInputClass}
+            aria-label="Déplacer la sélection vers"
+            defaultValue=""
+            onChange={(e) => bulkMove(e.target.value)}
+            disabled={pending}
+            className="border border-line bg-bg px-2 py-1 text-xs text-fg focus:border-accent focus:outline-none"
           >
             <option value="">Déplacer vers…</option>
             {stadeOptions.map((o) => (
@@ -165,14 +201,6 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
           </select>
           <button
             type="button"
-            onClick={bulkMove}
-            disabled={!bulkMoveTo || pending}
-            className="bg-fg px-2 py-1 text-xs font-medium text-bg disabled:opacity-40"
-          >
-            Déplacer
-          </button>
-          <button
-            type="button"
             onClick={bulkDelete}
             disabled={pending}
             className="px-2 py-1 text-xs text-accent hover:bg-line/40 disabled:opacity-40"
@@ -181,7 +209,7 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
           </button>
           <button
             type="button"
-            onClick={clearSelection}
+            onClick={selected.clear}
             className="ml-auto text-xs text-muted hover:text-fg"
           >
             Annuler
@@ -189,98 +217,61 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
         </div>
       )}
 
-      {view === 'list' ? (
+      {state.view === 'list' ? (
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
               <th className="w-6 py-2 font-normal">
-                <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} />
+                <input
+                  type="checkbox"
+                  aria-label="Tout sélectionner"
+                  checked={selected.allSelected}
+                  onChange={selected.toggleAll}
+                />
               </th>
-              <th className="font-normal">Code</th>
+              {isVisible('code') && <th className="font-normal">Code</th>}
               <th className="font-normal">Nom</th>
-              <th className="font-normal">Client</th>
-              <th className="font-normal">Track</th>
-              <th className="font-normal">Stade</th>
+              {isVisible('client') && <th className="font-normal">Client</th>}
+              {isVisible('track') && <th className="font-normal">Track</th>}
+              {isVisible('stade') && <th className="font-normal">Stade</th>}
               <th className="w-6 font-normal" />
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p) => (
-              <tr key={p.id} className="border-b border-line">
-                <td className="py-2">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(p.id)}
-                    onChange={() => toggleSelected(p.id)}
-                  />
-                </td>
-                <td className="font-mono text-xs text-muted">{p.code}</td>
-                <td>
-                  <Link href={`/projets/${p.id}`} className="hover:underline">
-                    {p.nom}
-                  </Link>
-                </td>
-                <td className="text-muted">
-                  <EditableField
-                    value={p.organisationId ?? ''}
-                    onSave={updateProjetField.bind(null, p.id, 'organisationId')}
-                    type="select"
-                    options={clientOptions}
-                    placeholder="—"
-                  />
-                </td>
-                <td className="text-muted">
-                  <EditableField
-                    value={p.track ?? ''}
-                    onSave={updateProjetField.bind(null, p.id, 'track')}
-                    type="select"
-                    options={trackOptions}
-                  />
-                </td>
-                <td className="text-muted">
-                  <div className="flex items-center gap-2">
-                    <StatusDot active={p.stade === 'EN_COURS'} muted={p.stade === 'ABANDONNE'} />
-                    <EditableField
-                      value={p.stade}
-                      onSave={updateProjetField.bind(null, p.id, 'stade')}
-                      type="select"
-                      options={stadeOptions}
-                    />
-                  </div>
-                </td>
-                <td>
-                  <DeleteButton
-                    action={deleteProjet.bind(null, p.id)}
-                    confirmMessage={`Supprimer le projet ${p.nom} ? Jalons, fichiers, tâches et dépenses associés seront aussi supprimés.`}
-                  />
-                </td>
-              </tr>
-            ))}
-            <AddProjetRow clients={clients} />
+            {groups
+              ? groups.map((g) => (
+                  <Fragment key={g.key}>
+                    <tr>
+                      <td
+                        colSpan={colCount}
+                        className="pb-1 pt-5 text-[10px] uppercase tracking-[0.12em] text-muted"
+                      >
+                        {g.label} <span className="text-line-strong">({g.rows.length})</span>
+                      </td>
+                    </tr>
+                    {g.rows.map(renderRow)}
+                  </Fragment>
+                ))
+              : filtered.map(renderRow)}
+            {!groups && <AddProjetRow clients={clients} />}
           </tbody>
         </table>
       ) : (
         <div className="flex gap-6 overflow-x-auto pb-2">
-          {STADE_COLUMNS.map((stade, i) => (
-            <div key={stade} className="flex w-64 shrink-0 gap-6">
+          {boardGroups.map((g, i) => (
+            <div key={g.key} className="flex w-64 shrink-0 gap-6">
               {i > 0 && <div className="w-px shrink-0 bg-line" />}
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted">
-                  <StatusDot active={stade === 'EN_COURS'} muted={stade === 'ABANDONNE'} />
-                  {STADE_PROJET_LABELS[stade]}
-                  <span className="text-line-strong">
-                    ({filtered.filter((p) => p.stade === stade).length})
-                  </span>
+                  <StatusDot active={g.key === 'EN_COURS'} muted={g.key === 'ABANDONNE'} />
+                  {g.label}
+                  <span className="text-line-strong">({g.rows.length})</span>
                 </p>
                 <div className="mt-3 space-y-2">
-                  {filtered
-                    .filter((p) => p.stade === stade)
-                    .map((p) => (
-                      <ProjetCard key={p.id} projet={p} />
-                    ))}
-                  {filtered.filter((p) => p.stade === stade).length === 0 && (
-                    <p className="text-xs text-line-strong">—</p>
-                  )}
+                  {g.rows.map((p) => (
+                    <ProjetCard key={p.id} projet={p} />
+                  ))}
+                  {g.rows.length === 0 && <p className="text-xs text-line-strong">—</p>}
                 </div>
               </div>
             </div>
@@ -289,4 +280,24 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
       )}
     </div>
   );
+}
+
+// Sélection multiple, dérivée des lignes actuellement visibles.
+function useSelection<T extends { id: string }>(rows: T[]) {
+  const [ids, setIds] = useState<Set<string>>(() => new Set());
+  const allSelected = rows.length > 0 && rows.every((r) => ids.has(r.id));
+
+  return {
+    ids,
+    toggle: (id: string) =>
+      setIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      }),
+    toggleAll: () => setIds(allSelected ? new Set<string>() : new Set(rows.map((r) => r.id))),
+    clear: () => setIds(new Set<string>()),
+    allSelected,
+  };
 }

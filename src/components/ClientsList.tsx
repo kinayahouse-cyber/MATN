@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
-import { Toolbar, toolbarInputClass } from '@/components/database/Toolbar';
+import { DatabaseToolbar } from '@/components/database/DatabaseToolbar';
+import { useDatabaseView } from '@/components/database/useDatabaseView';
+import type { PropertyDef } from '@/components/database/types';
 import { updateOrganisationField, deleteOrganisation } from '@/app/(app)/clients/actions';
 import { TRACK_LABELS, TYPE_ORGANISATION_LABELS } from '@/lib/labels';
 
@@ -23,55 +25,90 @@ type Client = {
 };
 
 export function ClientsList({ clients }: { clients: Client[] }) {
-  const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [trackFilter, setTrackFilter] = useState('');
+  const properties = useMemo<PropertyDef<Client>[]>(
+    () => [
+      { key: 'nom', label: 'Nom', getValue: (c) => c.nom, alwaysVisible: true, groupable: false },
+      {
+        key: 'type',
+        label: 'Type',
+        getValue: (c) => c.type,
+        format: (v) => TYPE_ORGANISATION_LABELS[v] ?? v,
+        options: typeOptions,
+      },
+      {
+        key: 'track',
+        label: 'Track',
+        getValue: (c) => c.track ?? '',
+        format: (v) => TRACK_LABELS[v] ?? v,
+        options: trackOptions,
+      },
+      { key: 'secteur', label: 'Secteur', getValue: (c) => c.secteur ?? '' },
+    ],
+    []
+  );
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return clients.filter((c) => {
-      if (typeFilter && c.type !== typeFilter) return false;
-      if (trackFilter && c.track !== trackFilter) return false;
-      if (
-        q &&
-        !c.nom.toLowerCase().includes(q) &&
-        !(c.secteur ?? '').toLowerCase().includes(q)
-      )
-        return false;
-      return true;
-    });
-  }, [clients, search, typeFilter, trackFilter]);
+  const searchKeys = useCallback((c: Client) => [c.nom, c.secteur ?? ''], []);
+  const view = useDatabaseView<Client>({ rows: clients, properties, searchKeys });
+  const { filtered, groups, isVisible } = view;
+
+  const colCount =
+    2 + [isVisible('type'), isVisible('track'), isVisible('secteur')].filter(Boolean).length;
+
+  const renderRow = (c: Client) => (
+    <tr key={c.id} className="border-b border-line">
+      <td className="py-2">
+        <Link href={`/clients/${c.id}`} className="hover:underline">
+          {c.nom}
+        </Link>
+      </td>
+      {isVisible('type') && (
+        <td className="text-muted">
+          <EditableField
+            value={c.type}
+            onSave={updateOrganisationField.bind(null, c.id, 'type')}
+            type="select"
+            options={typeOptions}
+          />
+        </td>
+      )}
+      {isVisible('track') && (
+        <td className="text-muted">
+          <EditableField
+            value={c.track ?? ''}
+            onSave={updateOrganisationField.bind(null, c.id, 'track')}
+            type="select"
+            options={trackOptions}
+          />
+        </td>
+      )}
+      {isVisible('secteur') && (
+        <td className="text-muted">
+          <EditableField
+            value={c.secteur ?? ''}
+            onSave={updateOrganisationField.bind(null, c.id, 'secteur')}
+          />
+        </td>
+      )}
+      <td>
+        <DeleteButton
+          action={deleteOrganisation.bind(null, c.id)}
+          confirmMessage={`Supprimer ${c.nom} ? Les projets liés seront détachés, pas supprimés.`}
+        />
+      </td>
+    </tr>
+  );
 
   return (
     <div>
-      <Toolbar>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher…"
-          className={`${toolbarInputClass} min-w-[10rem] flex-1`}
-        />
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={toolbarInputClass}>
-          <option value="">Tous les types</option>
-          {typeOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={trackFilter}
-          onChange={(e) => setTrackFilter(e.target.value)}
-          className={toolbarInputClass}
-        >
-          <option value="">Tous les tracks</option>
-          {trackOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </Toolbar>
+      <DatabaseToolbar
+        view={view}
+        properties={properties}
+        createSlot={
+          <Link href="/clients/new" className="text-sm text-muted hover:text-fg">
+            + Nouveau
+          </Link>
+        }
+      />
 
       {filtered.length === 0 ? (
         <p className="text-sm text-muted">Aucun client.</p>
@@ -80,50 +117,28 @@ export function ClientsList({ clients }: { clients: Client[] }) {
           <thead>
             <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
               <th className="py-2 font-normal">Nom</th>
-              <th className="font-normal">Type</th>
-              <th className="font-normal">Track</th>
-              <th className="font-normal">Secteur</th>
+              {isVisible('type') && <th className="font-normal">Type</th>}
+              {isVisible('track') && <th className="font-normal">Track</th>}
+              {isVisible('secteur') && <th className="font-normal">Secteur</th>}
               <th className="w-6 font-normal" />
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => (
-              <tr key={c.id} className="border-b border-line">
-                <td className="py-2">
-                  <Link href={`/clients/${c.id}`} className="hover:underline">
-                    {c.nom}
-                  </Link>
-                </td>
-                <td className="text-muted">
-                  <EditableField
-                    value={c.type}
-                    onSave={updateOrganisationField.bind(null, c.id, 'type')}
-                    type="select"
-                    options={typeOptions}
-                  />
-                </td>
-                <td className="text-muted">
-                  <EditableField
-                    value={c.track ?? ''}
-                    onSave={updateOrganisationField.bind(null, c.id, 'track')}
-                    type="select"
-                    options={trackOptions}
-                  />
-                </td>
-                <td className="text-muted">
-                  <EditableField
-                    value={c.secteur ?? ''}
-                    onSave={updateOrganisationField.bind(null, c.id, 'secteur')}
-                  />
-                </td>
-                <td>
-                  <DeleteButton
-                    action={deleteOrganisation.bind(null, c.id)}
-                    confirmMessage={`Supprimer ${c.nom} ? Les projets liés seront détachés, pas supprimés.`}
-                  />
-                </td>
-              </tr>
-            ))}
+            {groups
+              ? groups.map((g) => (
+                  <Fragment key={g.key}>
+                    <tr>
+                      <td
+                        colSpan={colCount}
+                        className="pb-1 pt-5 text-[10px] uppercase tracking-[0.12em] text-muted"
+                      >
+                        {g.label} <span className="text-line-strong">({g.rows.length})</span>
+                      </td>
+                    </tr>
+                    {g.rows.map(renderRow)}
+                  </Fragment>
+                ))
+              : filtered.map(renderRow)}
           </tbody>
         </table>
       )}

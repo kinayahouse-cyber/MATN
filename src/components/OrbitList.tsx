@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
-import { Toolbar, toolbarInputClass } from '@/components/database/Toolbar';
+import { DatabaseToolbar } from '@/components/database/DatabaseToolbar';
+import { useDatabaseView } from '@/components/database/useDatabaseView';
+import type { PropertyDef } from '@/components/database/types';
 import { updateFournisseurField, deleteFournisseur } from '@/app/(app)/orbit/actions';
 import { CATEGORIE_FOURNISSEUR_LABELS } from '@/lib/labels';
 
@@ -22,46 +24,75 @@ type Fournisseur = {
 };
 
 export function OrbitList({ fournisseurs }: { fournisseurs: Fournisseur[] }) {
-  const [search, setSearch] = useState('');
-  const [categorieFilter, setCategorieFilter] = useState('');
+  const properties = useMemo<PropertyDef<Fournisseur>[]>(
+    () => [
+      { key: 'nom', label: 'Nom', getValue: (f) => f.nom, alwaysVisible: true, groupable: false },
+      {
+        key: 'categorie',
+        label: 'Catégorie',
+        getValue: (f) => f.categorie ?? '',
+        format: (v) => CATEGORIE_FOURNISSEUR_LABELS[v] ?? v,
+        options: categorieOptions,
+      },
+      {
+        key: 'contact',
+        label: 'Contact',
+        getValue: (f) => f.contact ?? f.email ?? '',
+        groupable: false,
+      },
+    ],
+    []
+  );
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return fournisseurs.filter((f) => {
-      if (categorieFilter && f.categorie !== categorieFilter) return false;
-      if (
-        q &&
-        !f.nom.toLowerCase().includes(q) &&
-        !(f.contact ?? '').toLowerCase().includes(q) &&
-        !(f.email ?? '').toLowerCase().includes(q)
-      )
-        return false;
-      return true;
-    });
-  }, [fournisseurs, search, categorieFilter]);
+  const searchKeys = useCallback(
+    (f: Fournisseur) => [f.nom, f.contact ?? '', f.email ?? ''],
+    []
+  );
+  const view = useDatabaseView<Fournisseur>({ rows: fournisseurs, properties, searchKeys });
+  const { filtered, groups, isVisible } = view;
+
+  const colCount = 2 + [isVisible('categorie'), isVisible('contact')].filter(Boolean).length;
+
+  const renderRow = (f: Fournisseur) => (
+    <tr key={f.id} className="border-b border-line">
+      <td className="py-2">
+        <Link href={`/orbit/${f.id}`} className="font-medium hover:underline">
+          {f.nom}
+        </Link>
+      </td>
+      {isVisible('categorie') && (
+        <td className="text-muted">
+          <EditableField
+            value={f.categorie ?? ''}
+            onSave={updateFournisseurField.bind(null, f.id, 'categorie')}
+            type="select"
+            options={categorieOptions}
+          />
+        </td>
+      )}
+      {isVisible('contact') && (
+        <td className="text-muted">{f.contact ?? f.email ?? '—'}</td>
+      )}
+      <td>
+        <DeleteButton
+          action={deleteFournisseur.bind(null, f.id)}
+          confirmMessage={`Supprimer ${f.nom} ?`}
+        />
+      </td>
+    </tr>
+  );
 
   return (
     <div>
-      <Toolbar>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher…"
-          className={`${toolbarInputClass} min-w-[10rem] flex-1`}
-        />
-        <select
-          value={categorieFilter}
-          onChange={(e) => setCategorieFilter(e.target.value)}
-          className={toolbarInputClass}
-        >
-          <option value="">Toutes les catégories</option>
-          {categorieOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </Toolbar>
+      <DatabaseToolbar
+        view={view}
+        properties={properties}
+        createSlot={
+          <Link href="/orbit/new" className="text-sm text-muted hover:text-fg">
+            + Nouveau
+          </Link>
+        }
+      />
 
       {filtered.length === 0 ? (
         <p className="text-sm text-muted">Aucun fournisseur.</p>
@@ -70,36 +101,27 @@ export function OrbitList({ fournisseurs }: { fournisseurs: Fournisseur[] }) {
           <thead>
             <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
               <th className="py-2 font-normal">Nom</th>
-              <th className="font-normal">Catégorie</th>
-              <th className="font-normal">Contact</th>
+              {isVisible('categorie') && <th className="font-normal">Catégorie</th>}
+              {isVisible('contact') && <th className="font-normal">Contact</th>}
               <th className="w-6 font-normal" />
             </tr>
           </thead>
           <tbody>
-            {filtered.map((f) => (
-              <tr key={f.id} className="border-b border-line">
-                <td className="py-2">
-                  <Link href={`/orbit/${f.id}`} className="font-medium hover:underline">
-                    {f.nom}
-                  </Link>
-                </td>
-                <td className="text-muted">
-                  <EditableField
-                    value={f.categorie ?? ''}
-                    onSave={updateFournisseurField.bind(null, f.id, 'categorie')}
-                    type="select"
-                    options={categorieOptions}
-                  />
-                </td>
-                <td className="text-muted">{f.contact ?? f.email ?? '—'}</td>
-                <td>
-                  <DeleteButton
-                    action={deleteFournisseur.bind(null, f.id)}
-                    confirmMessage={`Supprimer ${f.nom} ?`}
-                  />
-                </td>
-              </tr>
-            ))}
+            {groups
+              ? groups.map((g) => (
+                  <Fragment key={g.key}>
+                    <tr>
+                      <td
+                        colSpan={colCount}
+                        className="pb-1 pt-5 text-[10px] uppercase tracking-[0.12em] text-muted"
+                      >
+                        {g.label} <span className="text-line-strong">({g.rows.length})</span>
+                      </td>
+                    </tr>
+                    {g.rows.map(renderRow)}
+                  </Fragment>
+                ))
+              : filtered.map(renderRow)}
           </tbody>
         </table>
       )}
