@@ -174,11 +174,18 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         echeanceLate={echeance.late}
       />
 
-      {/* ============ Corps : Description + Tâches en flux principal, Jalons + Files en rail ============ */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,22rem)]">
+      {/* ============ Corps : deux panneaux verticaux persistants ============
+          3/5 — sections globales (récit du projet, travail en cours, avancement)
+          2/5 — sections spécifiques (éléments individuels : jalons, fichiers, contacts, dépenses…) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr]">
+        {/* ---------- 3/5 : sections globales ---------- */}
         <div className="min-w-0">
+          <p className="px-8 pt-6 text-[10px] uppercase tracking-[0.2em] text-line-strong">
+            Vue d&rsquo;ensemble
+          </p>
+
           {/* ---------- Description ---------- */}
-          <section className="border-b border-line-strong p-8">
+          <section className="border-b border-line-strong p-8 pt-4">
             <Eyebrow>Overview</Eyebrow>
             <div className="mt-4">
               <SectionTitle size="md">Description</SectionTitle>
@@ -213,17 +220,69 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           </section>
 
           {/* ---------- Tâches ---------- */}
-          <section className="p-8">
+          <section className="border-b border-line-strong p-8">
             <SectionTitle size="md">Tâches</SectionTitle>
             <div className="mt-6">
               <TacheList projetId={projet.id} taches={projet.taches} utilisateurs={utilisateurs} />
             </div>
           </section>
+
+          {/* ---------- Budgets / dates / timeline ---------- */}
+          <section className="p-8">
+            <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+              <div>
+                <Eyebrow>Budget</Eyebrow>
+                <EditableField
+                  value={budgetRaw}
+                  displayValue={budget ?? undefined}
+                  onSave={updateProjetField.bind(null, projet.id, 'budget')}
+                  type="number"
+                  className="mt-2 font-display text-xl tabular-nums"
+                />
+              </div>
+              <div>
+                <Eyebrow>Budget interne</Eyebrow>
+                <EditableField
+                  value={budgetInterneRaw}
+                  displayValue={budgetInterne ?? undefined}
+                  onSave={updateProjetField.bind(null, projet.id, 'budgetInterne')}
+                  type="number"
+                  className="mt-2 font-display text-xl tabular-nums"
+                />
+              </div>
+              <div>
+                <Eyebrow>Début</Eyebrow>
+                <EditableField
+                  value={dateDebutRaw}
+                  onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
+                  type="date"
+                  className="mt-2 text-sm"
+                />
+              </div>
+              <div>
+                <Eyebrow>Fin prévue</Eyebrow>
+                <EditableField
+                  value={dateFinPrevueRaw}
+                  onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
+                  type="date"
+                  className="mt-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="mt-10">
+              <StadeTimeline stade={projet.stade} />
+            </div>
+          </section>
         </div>
 
-        {/* ---------- Rail de référence : Jalons + Files ---------- */}
+        {/* ---------- 2/5 : sections spécifiques ---------- */}
         <div className="border-t border-line-strong lg:border-l lg:border-t-0">
-          <section className="relative border-b border-line-strong p-8">
+          <p className="px-8 pt-6 text-[10px] uppercase tracking-[0.2em] text-line-strong lg:pt-6">
+            Détails
+          </p>
+
+          {/* ---------- Jalons ---------- */}
+          <section className="relative border-b border-line-strong p-8 pt-4">
             <GridCross className="-right-2 -top-2 hidden lg:block" />
             <SectionTitle size="sm">Jalons</SectionTitle>
 
@@ -282,7 +341,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           </section>
 
           {/* ---------- Files ---------- */}
-          <section className="relative p-8">
+          <section className="relative border-b border-line-strong p-8">
             <GridCross className="-right-2 -top-2 hidden lg:block" />
             <SectionTitle size="sm">Files</SectionTitle>
 
@@ -371,261 +430,222 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
               </form>
             </details>
           </section>
-        </div>
-      </div>
 
-      {/* Budgets / dates / timeline */}
-      <section className="border-t border-line-strong p-8">
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
-          <div>
-            <Eyebrow>Budget</Eyebrow>
-            <EditableField
-              value={budgetRaw}
-              displayValue={budget ?? undefined}
-              onSave={updateProjetField.bind(null, projet.id, 'budget')}
-              type="number"
-              className="mt-2 font-display text-xl tabular-nums"
-            />
-          </div>
-          <div>
-            <Eyebrow>Budget interne</Eyebrow>
-            <EditableField
-              value={budgetInterneRaw}
-              displayValue={budgetInterne ?? undefined}
-              onSave={updateProjetField.bind(null, projet.id, 'budgetInterne')}
-              type="number"
-              className="mt-2 font-display text-xl tabular-nums"
-            />
-          </div>
-          <div>
-            <Eyebrow>Début</Eyebrow>
-            <EditableField
-              value={dateDebutRaw}
-              onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
-              type="date"
-              className="mt-2 text-sm"
-            />
-          </div>
-          <div>
-            <Eyebrow>Fin prévue</Eyebrow>
-            <EditableField
-              value={dateFinPrevueRaw}
-              onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
-              type="date"
-              className="mt-2 text-sm"
-            />
-          </div>
-        </div>
-        <div className="mt-10">
-          <StadeTimeline stade={projet.stade} />
-        </div>
-      </section>
-
-      {/* Contacts + Dépenses */}
-      <div className="relative grid grid-cols-1 border-t border-line-strong lg:grid-cols-2">
-        <section className="relative border-b border-line-strong p-8 lg:border-b-0 lg:border-r">
-          <GridCross className="-right-2 -top-2 hidden lg:block" />
-          <SectionTitle size="sm">Contacts</SectionTitle>
-          {projet.contacts.length === 0 ? (
-            <p className="mt-6 text-sm text-muted">Aucun contact lié.</p>
-          ) : (
-            <ul className="mt-6 divide-y divide-line">
-              {projet.contacts.map((contact) => (
-                <li key={contact.id} className="flex items-center justify-between py-2 text-sm">
-                  {contact.organisationId ? (
-                    <Link href={`/clients/${contact.organisationId}`} className="hover:underline">
-                      {contact.nom}
-                    </Link>
-                  ) : (
-                    <span>{contact.nom}</span>
-                  )}
-                  <DeleteButton
-                    action={removeContactFromProjet.bind(null, projet.id, contact.id)}
-                    confirmMessage={`Délier ${contact.nom} de ce projet ?`}
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-          <AddProjetContact projetId={projet.id} contacts={availableContacts} />
-
-          {/* Champs propres au track LABEL (ADR-008) */}
-          {projet.track === 'LABEL' && (
-            <div className="mt-10">
-              <SectionTitle size="sm">Label</SectionTitle>
-              <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
-                <div>
-                  <Eyebrow>Stade production</Eyebrow>
-                  <EditableField
-                    value={projet.stadeLabel ?? ''}
-                    onSave={updateProjetField.bind(null, projet.id, 'stadeLabel')}
-                    type="select"
-                    options={stadeLabelOptions}
-                    className="mt-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <Eyebrow>Format</Eyebrow>
-                  <EditableField
-                    value={projet.format ?? ''}
-                    onSave={updateProjetField.bind(null, projet.id, 'format')}
-                    className="mt-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <Eyebrow>Statut diffusion</Eyebrow>
-                  <EditableField
-                    value={projet.statutDiffusion ?? ''}
-                    onSave={updateProjetField.bind(null, projet.id, 'statutDiffusion')}
-                    className="mt-2 text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className="p-8">
-          <SectionTitle size="sm">Dépenses</SectionTitle>
-          <table className="mt-6 w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
-                <th className="pb-2 font-normal">Catégorie</th>
-                <th className="pb-2 font-normal">Montant</th>
-                <th className="pb-2 font-normal">Date</th>
-                <th className="w-6 pb-2 font-normal" />
-              </tr>
-            </thead>
-            <tbody>
-              {projet.depenses.map((d) => (
-                <tr key={d.id} className="border-b border-line">
-                  <td className="py-1">
-                    <EditableField
-                      value={d.categorie}
-                      onSave={updateDepenseField.bind(null, d.id, 'categorie')}
-                    />
-                  </td>
-                  <td className="py-1 tabular-nums text-muted">
-                    <EditableField
-                      value={String(d.montant)}
-                      onSave={updateDepenseField.bind(null, d.id, 'montant')}
-                      type="number"
-                    />
-                  </td>
-                  <td className="py-1 text-muted">
-                    <EditableField
-                      value={d.date.toISOString().slice(0, 10)}
-                      onSave={updateDepenseField.bind(null, d.id, 'date')}
-                      type="date"
-                    />
-                  </td>
-                  <td className="py-1">
-                    <DeleteButton action={deleteDepense.bind(null, d.id)} />
-                  </td>
-                </tr>
-              ))}
-              <AddDepenseRow projetId={projet.id} />
-            </tbody>
-          </table>
-        </section>
-      </div>
-
-      {/* Assets */}
-      <section className="border-t border-line-strong p-8">
-        <SectionTitle size="sm">Assets</SectionTitle>
-        {projet.assets.length === 0 ? (
-          <p className="mt-6 text-sm text-muted">Aucun asset.</p>
-        ) : (
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
-            {projet.assets.map((asset) => {
-              const resolvedUrl = assetUrlById.get(asset.id);
-              return (
-                <div key={asset.id} className="border border-line">
-                  {asset.type === 'IMAGE' && resolvedUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={resolvedUrl} alt={asset.nom} className="h-28 w-full object-cover" />
-                  ) : (
-                    <div className="flex h-28 w-full items-center justify-center bg-line/40 text-xs uppercase tracking-wide text-muted">
-                      {TYPE_ASSET_LABELS[asset.type] ?? asset.type}
-                    </div>
-                  )}
-                  <div className="p-2">
-                    <EditableField
-                      value={asset.nom}
-                      onSave={updateAssetField.bind(null, asset.id, 'nom')}
-                      className="text-xs font-medium"
-                    />
-                    <div className="mt-1 flex items-center justify-between">
-                      <EditableField
-                        value={asset.type}
-                        onSave={updateAssetField.bind(null, asset.id, 'type')}
-                        type="select"
-                        options={typeAssetOptions}
-                        className="text-xs text-muted"
-                      />
-                      <DeleteButton action={deleteAsset.bind(null, asset.id)} />
-                    </div>
-                    {asset.sourceGenerateurIa && (
-                      <span className="mt-1 inline-block bg-line px-1.5 py-0.5 text-[10px] uppercase text-muted">
-                        IA
-                      </span>
+          {/* ---------- Contacts ---------- */}
+          <section className="relative border-b border-line-strong p-8">
+            <GridCross className="-right-2 -top-2 hidden lg:block" />
+            <SectionTitle size="sm">Contacts</SectionTitle>
+            {projet.contacts.length === 0 ? (
+              <p className="mt-6 text-sm text-muted">Aucun contact lié.</p>
+            ) : (
+              <ul className="mt-6 divide-y divide-line">
+                {projet.contacts.map((contact) => (
+                  <li key={contact.id} className="flex items-center justify-between py-2 text-sm">
+                    {contact.organisationId ? (
+                      <Link href={`/clients/${contact.organisationId}`} className="hover:underline">
+                        {contact.nom}
+                      </Link>
+                    ) : (
+                      <span>{contact.nom}</span>
                     )}
-                    {resolvedUrl && (
-                      <a
-                        href={resolvedUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-1 block text-xs text-accent hover:underline"
-                      >
-                        Ouvrir
-                      </a>
-                    )}
+                    <DeleteButton
+                      action={removeContactFromProjet.bind(null, projet.id, contact.id)}
+                      confirmMessage={`Délier ${contact.nom} de ce projet ?`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+            <AddProjetContact projetId={projet.id} contacts={availableContacts} />
+
+            {/* Champs propres au track LABEL (ADR-008) */}
+            {projet.track === 'LABEL' && (
+              <div className="mt-10">
+                <SectionTitle size="sm">Label</SectionTitle>
+                <div className="mt-6 grid grid-cols-1 gap-6">
+                  <div>
+                    <Eyebrow>Stade production</Eyebrow>
+                    <EditableField
+                      value={projet.stadeLabel ?? ''}
+                      onSave={updateProjetField.bind(null, projet.id, 'stadeLabel')}
+                      type="select"
+                      options={stadeLabelOptions}
+                      className="mt-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Eyebrow>Format</Eyebrow>
+                    <EditableField
+                      value={projet.format ?? ''}
+                      onSave={updateProjetField.bind(null, projet.id, 'format')}
+                      className="mt-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Eyebrow>Statut diffusion</Eyebrow>
+                    <EditableField
+                      value={projet.statutDiffusion ?? ''}
+                      onSave={updateProjetField.bind(null, projet.id, 'statutDiffusion')}
+                      className="mt-2 text-sm"
+                    />
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+            )}
+          </section>
 
-        <details className="mt-6">
-          <summary className="cursor-pointer text-sm text-muted hover:text-fg">
-            + Ajouter un asset
-          </summary>
-          <form action={addAsset} className="mt-3 max-w-md space-y-3">
-            <input type="hidden" name="projetId" value={projet.id} />
-            <div>
-              <label className={labelClass}>Nom</label>
-              <input name="nom" required className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>Type</label>
-              <select name="type" defaultValue="IMAGE" className={inputClass}>
-                {typeAssetOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
+          {/* ---------- Dépenses ---------- */}
+          <section className="border-b border-line-strong p-8">
+            <SectionTitle size="sm">Dépenses</SectionTitle>
+            <table className="mt-6 w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
+                  <th className="pb-2 font-normal">Catégorie</th>
+                  <th className="pb-2 font-normal">Montant</th>
+                  <th className="pb-2 font-normal">Date</th>
+                  <th className="w-6 pb-2 font-normal" />
+                </tr>
+              </thead>
+              <tbody>
+                {projet.depenses.map((d) => (
+                  <tr key={d.id} className="border-b border-line">
+                    <td className="py-1">
+                      <EditableField
+                        value={d.categorie}
+                        onSave={updateDepenseField.bind(null, d.id, 'categorie')}
+                      />
+                    </td>
+                    <td className="py-1 tabular-nums text-muted">
+                      <EditableField
+                        value={String(d.montant)}
+                        onSave={updateDepenseField.bind(null, d.id, 'montant')}
+                        type="number"
+                      />
+                    </td>
+                    <td className="py-1 text-muted">
+                      <EditableField
+                        value={d.date.toISOString().slice(0, 10)}
+                        onSave={updateDepenseField.bind(null, d.id, 'date')}
+                        type="date"
+                      />
+                    </td>
+                    <td className="py-1">
+                      <DeleteButton action={deleteDepense.bind(null, d.id)} />
+                    </td>
+                  </tr>
                 ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelClass}>Fichier</label>
-              <input name="file" type="file" required className={inputClass} />
-            </div>
-            <label className="flex items-center gap-2 text-sm text-muted">
-              <input type="checkbox" name="sourceGenerateurIa" />
-              Généré par IA
-            </label>
-            <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
-              Ajouter
-            </button>
-          </form>
-        </details>
-      </section>
+                <AddDepenseRow projetId={projet.id} />
+              </tbody>
+            </table>
+          </section>
 
-      {/* Barre de capture */}
-      <section className="border-t border-line-strong p-8">
-        <CaptureBar projetId={projet.id} feed={feed} addDecision={addDecision} addNote={addNote} />
-      </section>
+          {/* ---------- Assets ---------- */}
+          <section className="border-b border-line-strong p-8">
+            <SectionTitle size="sm">Assets</SectionTitle>
+            {projet.assets.length === 0 ? (
+              <p className="mt-6 text-sm text-muted">Aucun asset.</p>
+            ) : (
+              <div className="mt-6 grid grid-cols-2 gap-4">
+                {projet.assets.map((asset) => {
+                  const resolvedUrl = assetUrlById.get(asset.id);
+                  return (
+                    <div key={asset.id} className="border border-line">
+                      {asset.type === 'IMAGE' && resolvedUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={resolvedUrl}
+                          alt={asset.nom}
+                          className="h-28 w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-28 w-full items-center justify-center bg-line/40 text-xs uppercase tracking-wide text-muted">
+                          {TYPE_ASSET_LABELS[asset.type] ?? asset.type}
+                        </div>
+                      )}
+                      <div className="p-2">
+                        <EditableField
+                          value={asset.nom}
+                          onSave={updateAssetField.bind(null, asset.id, 'nom')}
+                          className="text-xs font-medium"
+                        />
+                        <div className="mt-1 flex items-center justify-between">
+                          <EditableField
+                            value={asset.type}
+                            onSave={updateAssetField.bind(null, asset.id, 'type')}
+                            type="select"
+                            options={typeAssetOptions}
+                            className="text-xs text-muted"
+                          />
+                          <DeleteButton action={deleteAsset.bind(null, asset.id)} />
+                        </div>
+                        {asset.sourceGenerateurIa && (
+                          <span className="mt-1 inline-block bg-line px-1.5 py-0.5 text-[10px] uppercase text-muted">
+                            IA
+                          </span>
+                        )}
+                        {resolvedUrl && (
+                          <a
+                            href={resolvedUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-1 block text-xs text-accent hover:underline"
+                          >
+                            Ouvrir
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <details className="mt-6">
+              <summary className="cursor-pointer text-sm text-muted hover:text-fg">
+                + Ajouter un asset
+              </summary>
+              <form action={addAsset} className="mt-3 space-y-3">
+                <input type="hidden" name="projetId" value={projet.id} />
+                <div>
+                  <label className={labelClass}>Nom</label>
+                  <input name="nom" required className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Type</label>
+                  <select name="type" defaultValue="IMAGE" className={inputClass}>
+                    {typeAssetOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Fichier</label>
+                  <input name="file" type="file" required className={inputClass} />
+                </div>
+                <label className="flex items-center gap-2 text-sm text-muted">
+                  <input type="checkbox" name="sourceGenerateurIa" />
+                  Généré par IA
+                </label>
+                <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
+                  Ajouter
+                </button>
+              </form>
+            </details>
+          </section>
+
+          {/* ---------- Barre de capture : Décisions / Notes ---------- */}
+          <section className="p-8">
+            <CaptureBar
+              projetId={projet.id}
+              feed={feed}
+              addDecision={addDecision}
+              addNote={addNote}
+            />
+          </section>
+        </div>
+      </div>
 
       {/* Suppression du projet — action destructrice, isolée en fin de page */}
       <section className="border-t border-line-strong p-8">

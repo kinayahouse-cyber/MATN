@@ -29,7 +29,7 @@ export function CaptureBar({
 
   return (
     <div>
-      <div className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2">
         {feed.map((entry) => (
           <div key={`${entry.kind}-${entry.id}`} className="bg-accent p-3 text-bg">
             <div className="flex items-center gap-2">
