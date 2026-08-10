@@ -21,8 +21,6 @@ import {
   updateProjetField,
   deleteProjet,
   removeContactFromProjet,
-  updateTacheField,
-  deleteTache,
   updateDepenseField,
   deleteDepense,
   addDecision,
@@ -38,7 +36,8 @@ import { TacheList } from '@/components/TacheList';
 import { SectionTitle, Eyebrow } from '@/components/SectionTitle';
 import { GridCross } from '@/components/grid/GridCross';
 import { StadeTimeline } from '@/components/StadeTimeline';
-import { StatusBlock } from '@/components/properties/StatusBlock';
+import { ProjectHeader } from '@/components/ProjectHeader';
+import { ProjectMetrics } from '@/components/ProjectMetrics';
 import { CaptureBar } from '@/components/CaptureBar';
 
 const engagementOptions = Object.entries(ENGAGEMENT_LABELS).map(([value, label]) => ({
@@ -66,13 +65,19 @@ const inputClass =
   'mt-1 w-full border border-line bg-bg px-3 py-2 text-sm text-fg focus:outline-none focus:border-accent';
 const labelClass = 'text-sm text-muted';
 
-// Cellule du premier écran : hauteur contrainte par la grille, scroll interne si le contenu
-// dépasse — la ligne de flottaison reste stable quel que soit le volume de données.
-const CELL = 'relative min-h-0 overflow-y-auto p-8';
-
 function formatMontant(montant: unknown) {
   if (montant === null || montant === undefined) return null;
   return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(montant)) + ' DZD';
+}
+
+function formatEcheance(dateFinPrevue: Date | null, stade: string) {
+  if (!dateFinPrevue) return { label: '—', late: false };
+  const clos = stade === 'LIVRE' || stade === 'CLOS' || stade === 'ABANDONNE';
+  const diffDays = Math.ceil((dateFinPrevue.getTime() - Date.now()) / 86_400_000);
+  if (clos) return { label: diffDays >= 0 ? `${diffDays}j` : 'Passée', late: false };
+  if (diffDays < 0) return { label: `${Math.abs(diffDays)}j de retard`, late: true };
+  if (diffDays === 0) return { label: "Aujourd'hui", late: false };
+  return { label: `${diffDays}j restants`, late: false };
 }
 
 export default async function ProjetPage({ params }: { params: Promise<{ id: string }> }) {
@@ -112,6 +117,9 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
   const assetUrlById = new Map(projet.assets.map((asset, i) => [asset.id, assetUrls[i]]));
 
   const totalDepenses = projet.depenses.reduce((sum, d) => sum + Number(d.montant), 0);
+  const jalonsAtteints = projet.jalons.filter((j) => j.atteint).length;
+  const tachesFaites = projet.taches.filter((t) => t.statut === 'FAIT').length;
+  const echeance = formatEcheance(projet.dateFinPrevue, projet.stade);
 
   // Fusionne Décisions et Notes en un seul flux chronologique pour la barre de capture.
   const feed = [
@@ -142,74 +150,38 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="-mx-8 -my-6 md:-mx-10">
-      {/* ============ PREMIER ÉCRAN (100vh) : Jalons · Description · Files · Tâches ============ */}
-      <div className="grid grid-cols-1 lg:h-screen lg:grid-cols-[minmax(0,24rem)_1fr] lg:grid-rows-2">
-        {/* ---------- Jalons ---------- */}
-        <section className={`${CELL} border-b border-line-strong lg:border-r`}>
-          <GridCross className="-right-2 -top-2 hidden lg:block" />
-          <SectionTitle size="xl">Jalons</SectionTitle>
+      <ProjectHeader
+        projet={{
+          id: projet.id,
+          nom: projet.nom,
+          code: projet.code,
+          track: projet.track,
+          organisation: projet.organisation,
+        }}
+        onSaveName={updateProjetField.bind(null, projet.id, 'nom')}
+      />
 
-          {projet.jalons.length === 0 ? (
-            <p className="mt-8 text-sm text-muted">Aucun jalon.</p>
-          ) : (
-            <ul className="relative mt-8 space-y-4 pl-6">
-              <span className="absolute bottom-2 left-[3px] top-2 w-px bg-fg" aria-hidden />
-              {projet.jalons.map((jalon) => (
-                <li key={jalon.id} className="relative">
-                  <span
-                    aria-hidden
-                    className={`absolute -left-6 top-1.5 h-1.5 w-1.5 rotate-45 ${
-                      jalon.atteint ? 'bg-fg' : 'border border-fg'
-                    }`}
-                  />
-                  <div className="flex items-baseline gap-3 border-b border-line pb-1.5">
-                    <EditableField
-                      value={jalon.date.toISOString().slice(0, 10)}
-                      onSave={updateJalonField.bind(null, jalon.id, 'date')}
-                      type="date"
-                      className="w-[5.5rem] shrink-0 text-xs text-muted"
-                    />
-                    <EditableField
-                      value={jalon.libelle}
-                      onSave={updateJalonField.bind(null, jalon.id, 'libelle')}
-                      className="flex-1 text-sm font-medium"
-                    />
-                    <JalonAtteintCheckbox id={jalon.id} atteint={jalon.atteint} />
-                    <DeleteButton action={deleteJalon.bind(null, jalon.id)} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+      <ProjectMetrics
+        stade={projet.stade}
+        onSaveStade={updateProjetField.bind(null, projet.id, 'stade')}
+        budgetSpent={totalDepenses}
+        budgetTotal={projet.budget === null ? null : Number(projet.budget)}
+        jalonsAtteints={jalonsAtteints}
+        jalonsTotal={projet.jalons.length}
+        tachesFaites={tachesFaites}
+        tachesTotal={projet.taches.length}
+        echeanceLabel={echeance.label}
+        echeanceLate={echeance.late}
+      />
 
-          <details className="mt-6">
-            <summary className="cursor-pointer text-sm text-muted hover:text-fg">
-              + Ajouter un jalon
-            </summary>
-            <form action={addJalon} className="mt-3 space-y-3">
-              <input type="hidden" name="projetId" value={projet.id} />
-              <div>
-                <label className={labelClass}>Libellé</label>
-                <input name="libelle" required className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Date</label>
-                <input name="date" type="date" required className={inputClass} />
-              </div>
-              <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
-                Ajouter
-              </button>
-            </form>
-          </details>
-        </section>
-
-        {/* ---------- Description, puis identité + statut ---------- */}
-        <section className="relative flex min-h-0 flex-col border-b border-line-strong">
-          {/* Bloc haut : Overview / Description / Scopes — occupe la hauteur disponible */}
-          <div className="min-h-0 flex-1 overflow-y-auto p-8">
+      {/* ============ Corps : Description + Tâches en flux principal, Jalons + Files en rail ============ */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,22rem)]">
+        <div className="min-w-0">
+          {/* ---------- Description ---------- */}
+          <section className="border-b border-line-strong p-8">
             <Eyebrow>Overview</Eyebrow>
-            <div className="mt-5">
-              <SectionTitle size="xl">Description</SectionTitle>
+            <div className="mt-4">
+              <SectionTitle size="md">Description</SectionTitle>
             </div>
             <EditableField
               value={projet.description ?? ''}
@@ -222,7 +194,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
             <div className="mt-8 flex items-start justify-between gap-8">
               {/* Scopes : contenu non encore modélisé (ADR-009) — placeholder */}
               <div>
-                <SectionTitle size="md" uppercase={false}>
+                <SectionTitle size="sm" uppercase={false}>
                   Scopes&nbsp;:
                 </SectionTitle>
                 <p className="mt-2 text-sm text-muted">À définir.</p>
@@ -238,147 +210,169 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                 />
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* Bloc bas : nom du projet / client, séparé du statut par une ligne verticale */}
-          <div className="grid shrink-0 grid-cols-[1fr_auto] border-t border-line-strong">
-            <div className="min-w-0 px-8 py-6">
-              <EditableField
-                value={projet.nom}
-                onSave={updateProjetField.bind(null, projet.id, 'nom')}
-                className="font-display text-3xl tracking-tight md:text-4xl [&_button]:border-b-2 [&_button]:border-fg [&_button]:pb-1"
-              />
-              <div className="mt-3">
-                {projet.organisation ? (
-                  <Link
-                    href={`/clients/${projet.organisation.id}`}
-                    className="border-b border-fg pb-0.5 text-sm text-muted hover:text-fg"
-                  >
-                    {projet.organisation.nom}
-                  </Link>
-                ) : (
-                  <span className="border-b border-fg pb-0.5 text-sm text-muted">
-                    Projet interne
-                  </span>
-                )}
-              </div>
-              <p className="mt-3 font-mono text-xs text-muted">{projet.code}</p>
+          {/* ---------- Tâches ---------- */}
+          <section className="p-8">
+            <SectionTitle size="md">Tâches</SectionTitle>
+            <div className="mt-6">
+              <TacheList projetId={projet.id} taches={projet.taches} utilisateurs={utilisateurs} />
             </div>
+          </section>
+        </div>
 
-            <div className="flex w-64 items-center border-l border-line-strong px-8 py-6">
-              <StatusBlock
-                value={projet.stade}
-                onSave={updateProjetField.bind(null, projet.id, 'stade')}
-              />
-            </div>
-          </div>
-        </section>
+        {/* ---------- Rail de référence : Jalons + Files ---------- */}
+        <div className="border-t border-line-strong lg:border-l lg:border-t-0">
+          <section className="relative border-b border-line-strong p-8">
+            <GridCross className="-right-2 -top-2 hidden lg:block" />
+            <SectionTitle size="sm">Jalons</SectionTitle>
 
-        {/* ---------- Files ---------- */}
-        <section className={`${CELL} border-b border-line-strong lg:border-b-0 lg:border-r`}>
-          <GridCross className="-right-2 -top-2 hidden lg:block" />
-          <SectionTitle size="xl">Files</SectionTitle>
-
-          {projet.documents.length === 0 ? (
-            <p className="mt-8 text-sm text-muted">Aucun document.</p>
-          ) : (
-            <ul className="mt-8 space-y-3">
-              {projet.documents.map((doc) => (
-                <li key={doc.id} className="flex gap-3 border-b border-line pb-2">
-                  <span aria-hidden className="mt-0.5 text-sm text-fg">
-                    ✳
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
+            {projet.jalons.length === 0 ? (
+              <p className="mt-6 text-sm text-muted">Aucun jalon.</p>
+            ) : (
+              <ul className="relative mt-6 space-y-4 pl-6">
+                <span className="absolute bottom-2 left-[3px] top-2 w-px bg-fg" aria-hidden />
+                {projet.jalons.map((jalon) => (
+                  <li key={jalon.id} className="relative">
+                    <span
+                      aria-hidden
+                      className={`absolute -left-6 top-1.5 h-1.5 w-1.5 rotate-45 ${
+                        jalon.atteint ? 'bg-fg' : 'border border-fg'
+                      }`}
+                    />
+                    <div className="flex items-baseline gap-3 border-b border-line pb-1.5">
                       <EditableField
-                        value={doc.numero ?? ''}
-                        onSave={updateDocumentField.bind(null, doc.id, 'numero')}
-                        placeholder="Sans numéro"
+                        value={jalon.date.toISOString().slice(0, 10)}
+                        onSave={updateJalonField.bind(null, jalon.id, 'date')}
+                        type="date"
+                        className="w-[5.5rem] shrink-0 text-xs text-muted"
+                      />
+                      <EditableField
+                        value={jalon.libelle}
+                        onSave={updateJalonField.bind(null, jalon.id, 'libelle')}
                         className="flex-1 text-sm font-medium"
                       />
-                      <EditableField
-                        value={doc.statut}
-                        onSave={updateDocumentField.bind(null, doc.id, 'statut')}
-                        type="select"
-                        options={statutDocumentOptions}
-                        className="w-24 shrink-0 text-right text-xs text-muted"
-                      />
-                      <DeleteButton action={deleteDocument.bind(null, doc.id)} />
+                      <JalonAtteintCheckbox id={jalon.id} atteint={jalon.atteint} />
+                      <DeleteButton action={deleteJalon.bind(null, jalon.id)} />
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      <EditableField
-                        value={doc.type}
-                        onSave={updateDocumentField.bind(null, doc.id, 'type')}
-                        type="select"
-                        options={typeDocumentOptions}
-                        className="text-xs text-muted"
-                      />
-                      {documentUrlById.get(doc.id) && (
-                        <a
-                          href={documentUrlById.get(doc.id)!}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-accent hover:underline"
-                        >
-                          Ouvrir
-                        </a>
-                      )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <details className="mt-6">
+              <summary className="cursor-pointer text-sm text-muted hover:text-fg">
+                + Ajouter un jalon
+              </summary>
+              <form action={addJalon} className="mt-3 space-y-3">
+                <input type="hidden" name="projetId" value={projet.id} />
+                <div>
+                  <label className={labelClass}>Libellé</label>
+                  <input name="libelle" required className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Date</label>
+                  <input name="date" type="date" required className={inputClass} />
+                </div>
+                <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
+                  Ajouter
+                </button>
+              </form>
+            </details>
+          </section>
+
+          {/* ---------- Files ---------- */}
+          <section className="relative p-8">
+            <GridCross className="-right-2 -top-2 hidden lg:block" />
+            <SectionTitle size="sm">Files</SectionTitle>
+
+            {projet.documents.length === 0 ? (
+              <p className="mt-6 text-sm text-muted">Aucun document.</p>
+            ) : (
+              <ul className="mt-6 space-y-3">
+                {projet.documents.map((doc) => (
+                  <li key={doc.id} className="flex gap-3 border-b border-line pb-2">
+                    <span aria-hidden className="mt-0.5 text-sm text-fg">
+                      ✳
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <EditableField
+                          value={doc.numero ?? ''}
+                          onSave={updateDocumentField.bind(null, doc.id, 'numero')}
+                          placeholder="Sans numéro"
+                          className="flex-1 text-sm font-medium"
+                        />
+                        <EditableField
+                          value={doc.statut}
+                          onSave={updateDocumentField.bind(null, doc.id, 'statut')}
+                          type="select"
+                          options={statutDocumentOptions}
+                          className="w-24 shrink-0 text-right text-xs text-muted"
+                        />
+                        <DeleteButton action={deleteDocument.bind(null, doc.id)} />
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <EditableField
+                          value={doc.type}
+                          onSave={updateDocumentField.bind(null, doc.id, 'type')}
+                          type="select"
+                          options={typeDocumentOptions}
+                          className="text-xs text-muted"
+                        />
+                        {documentUrlById.get(doc.id) && (
+                          <a
+                            href={documentUrlById.get(doc.id)!}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-accent hover:underline"
+                          >
+                            Ouvrir
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+                  </li>
+                ))}
+              </ul>
+            )}
 
-          <details className="mt-6">
-            <summary className="cursor-pointer text-sm text-muted hover:text-fg">
-              + Ajouter un fichier
-            </summary>
-            <form action={addDocument} className="mt-3 space-y-3">
-              <input type="hidden" name="projetId" value={projet.id} />
-              <div>
-                <label className={labelClass}>Type</label>
-                <select name="type" defaultValue="LIVRABLE" className={inputClass}>
-                  {typeDocumentOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Numéro (optionnel)</label>
-                <input name="numero" className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Fichier</label>
-                <input name="file" type="file" className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Lien externe (si pas d&rsquo;upload)</label>
-                <input name="url" type="url" placeholder="https://…" className={inputClass} />
-              </div>
-              <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
-                Ajouter
-              </button>
-            </form>
-          </details>
-        </section>
-
-        {/* ---------- Tâches ---------- */}
-        <section className={CELL}>
-          <SectionTitle size="xl">Tâches</SectionTitle>
-          <div className="mt-8">
-            <TacheList
-              projetId={projet.id}
-              taches={projet.taches}
-              utilisateurs={utilisateurs}
-            />
-          </div>
-        </section>
+            <details className="mt-6">
+              <summary className="cursor-pointer text-sm text-muted hover:text-fg">
+                + Ajouter un fichier
+              </summary>
+              <form action={addDocument} className="mt-3 space-y-3">
+                <input type="hidden" name="projetId" value={projet.id} />
+                <div>
+                  <label className={labelClass}>Type</label>
+                  <select name="type" defaultValue="LIVRABLE" className={inputClass}>
+                    {typeDocumentOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Numéro (optionnel)</label>
+                  <input name="numero" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Fichier</label>
+                  <input name="file" type="file" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Lien externe (si pas d&rsquo;upload)</label>
+                  <input name="url" type="url" placeholder="https://…" className={inputClass} />
+                </div>
+                <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
+                  Ajouter
+                </button>
+              </form>
+            </details>
+          </section>
+        </div>
       </div>
-
-      {/* ============ SOUS LA LIGNE DE FLOTTAISON ============ */}
 
       {/* Budgets / dates / timeline */}
       <section className="border-t border-line-strong p-8">
@@ -431,7 +425,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
       <div className="relative grid grid-cols-1 border-t border-line-strong lg:grid-cols-2">
         <section className="relative border-b border-line-strong p-8 lg:border-b-0 lg:border-r">
           <GridCross className="-right-2 -top-2 hidden lg:block" />
-          <SectionTitle size="lg">Contacts</SectionTitle>
+          <SectionTitle size="sm">Contacts</SectionTitle>
           {projet.contacts.length === 0 ? (
             <p className="mt-6 text-sm text-muted">Aucun contact lié.</p>
           ) : (
@@ -458,7 +452,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           {/* Champs propres au track LABEL (ADR-008) */}
           {projet.track === 'LABEL' && (
             <div className="mt-10">
-              <SectionTitle size="lg">Label</SectionTitle>
+              <SectionTitle size="sm">Label</SectionTitle>
               <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
                 <div>
                   <Eyebrow>Stade production</Eyebrow>
@@ -492,15 +486,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         </section>
 
         <section className="p-8">
-          <div className="flex items-baseline justify-between">
-            <SectionTitle size="lg">Dépenses</SectionTitle>
-            {totalDepenses > 0 && (
-              <span className="text-xs text-muted">
-                {formatMontant(totalDepenses)}
-                {budget && ` / ${budget}`}
-              </span>
-            )}
-          </div>
+          <SectionTitle size="sm">Dépenses</SectionTitle>
           <table className="mt-6 w-full text-left text-sm">
             <thead>
               <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
@@ -546,7 +532,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
       {/* Assets */}
       <section className="border-t border-line-strong p-8">
-        <SectionTitle size="lg">Assets</SectionTitle>
+        <SectionTitle size="sm">Assets</SectionTitle>
         {projet.assets.length === 0 ? (
           <p className="mt-6 text-sm text-muted">Aucun asset.</p>
         ) : (
