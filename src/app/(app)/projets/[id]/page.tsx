@@ -5,7 +5,6 @@ import {
   ENGAGEMENT_LABELS,
   TYPE_DOCUMENT_LABELS,
   STATUT_DOCUMENT_LABELS,
-  STATUT_TACHE_LABELS,
   STADE_PRODUCTION_LABEL_LABELS,
   TYPE_ASSET_LABELS,
 } from '@/lib/labels';
@@ -32,11 +31,10 @@ import {
 import { resolveFileUrl } from '@/lib/supabase/admin';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
-import { AddTacheRow } from '@/components/AddTacheRow';
 import { AddDepenseRow } from '@/components/AddDepenseRow';
 import { AddProjetContact } from '@/components/AddProjetContact';
 import { JalonAtteintCheckbox } from '@/components/JalonAtteintCheckbox';
-import { TacheDoneCheckbox } from '@/components/TacheDoneCheckbox';
+import { TacheList } from '@/components/TacheList';
 import { SectionTitle, Eyebrow } from '@/components/SectionTitle';
 import { GridCross } from '@/components/grid/GridCross';
 import { StadeTimeline } from '@/components/StadeTimeline';
@@ -44,10 +42,6 @@ import { StatusBlock } from '@/components/properties/StatusBlock';
 import { CaptureBar } from '@/components/CaptureBar';
 
 const engagementOptions = Object.entries(ENGAGEMENT_LABELS).map(([value, label]) => ({
-  value,
-  label,
-}));
-const statutTacheOptions = Object.entries(STATUT_TACHE_LABELS).map(([value, label]) => ({
   value,
   label,
 }));
@@ -374,71 +368,13 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         {/* ---------- Tâches ---------- */}
         <section className={CELL}>
           <SectionTitle size="xl">Tâches</SectionTitle>
-          <table className="mt-8 w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
-                <th className="w-6 pb-2 font-normal" />
-                <th className="pb-2 font-normal">Libellé</th>
-                <th className="pb-2 font-normal">Statut</th>
-                <th className="pb-2 font-normal">Échéance</th>
-                <th className="pb-2 font-normal">Assigné à</th>
-                <th className="w-6 pb-2 font-normal" />
-              </tr>
-            </thead>
-            <tbody>
-              {projet.taches.map((t) => (
-                <tr key={t.id} className="border-b border-line align-top">
-                  <td className="py-2">
-                    <TacheDoneCheckbox id={t.id} statut={t.statut} />
-                  </td>
-                  <td className="py-1">
-                    <EditableField
-                      value={t.libelle}
-                      onSave={updateTacheField.bind(null, t.id, 'libelle')}
-                      className={t.statut === 'FAIT' ? 'text-muted line-through' : ''}
-                    />
-                    <EditableField
-                      value={t.description ?? ''}
-                      onSave={updateTacheField.bind(null, t.id, 'description')}
-                      type="textarea"
-                      placeholder="+"
-                      className="text-xs text-muted"
-                    />
-                  </td>
-                  <td className="py-1 text-muted">
-                    <EditableField
-                      value={t.statut}
-                      onSave={updateTacheField.bind(null, t.id, 'statut')}
-                      type="select"
-                      options={statutTacheOptions}
-                    />
-                  </td>
-                  <td className="py-1 text-muted">
-                    <EditableField
-                      value={t.echeance ? t.echeance.toISOString().slice(0, 10) : ''}
-                      onSave={updateTacheField.bind(null, t.id, 'echeance')}
-                      type="date"
-                    />
-                  </td>
-                  <td className="py-1 text-muted">
-                    <EditableField
-                      value={t.assigneAId ?? ''}
-                      onSave={updateTacheField.bind(null, t.id, 'assigneAId')}
-                      type="select"
-                      options={utilisateurs.map((u) => ({
-                        value: u.id,
-                        label: u.nom ?? u.email,
-                      }))}
-                    />
-                  </td>
-                  <td className="py-2">
-                    <DeleteButton action={deleteTache.bind(null, t.id)} />
-                  </td>
-                </tr>
-              ))}
-              <AddTacheRow projetId={projet.id} utilisateurs={utilisateurs} />
-            </tbody>
-          </table>
+          <div className="mt-8">
+            <TacheList
+              projetId={projet.id}
+              taches={projet.taches}
+              utilisateurs={utilisateurs}
+            />
+          </div>
         </section>
       </div>
 

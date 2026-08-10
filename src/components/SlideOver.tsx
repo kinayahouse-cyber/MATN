@@ -19,7 +19,7 @@ export function SlideOver({ children }: { children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/60" onClick={close} />
-      <div className="relative h-full w-full max-w-md overflow-y-auto border-l border-line-strong bg-bg p-6 shadow-xl">
+      <div className="relative h-full w-full max-w-xl overflow-y-auto border-l border-line-strong bg-bg p-8 shadow-xl">
         <button
           type="button"
           onClick={close}
