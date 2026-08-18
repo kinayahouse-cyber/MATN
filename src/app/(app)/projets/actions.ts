@@ -186,6 +186,7 @@ const PROJET_EDITABLE_FIELDS = [
   'stade',
   'budget',
   'budgetInterne',
+  'budgetEncaisse',
   'dateDebut',
   'dateFinPrevue',
   'organisationId',
@@ -196,7 +197,7 @@ const PROJET_EDITABLE_FIELDS = [
 type ProjetField = (typeof PROJET_EDITABLE_FIELDS)[number];
 
 const PROJET_DATE_FIELDS = new Set(['dateDebut', 'dateFinPrevue']);
-const PROJET_DECIMAL_FIELDS = new Set(['budget', 'budgetInterne']);
+const PROJET_DECIMAL_FIELDS = new Set(['budget', 'budgetInterne', 'budgetEncaisse']);
 const PROJET_REQUIRED_FIELDS = new Set(['nom', 'stade']);
 
 export async function updateProjetField(id: string, field: ProjetField, value: string) {

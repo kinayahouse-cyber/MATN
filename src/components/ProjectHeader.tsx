@@ -20,7 +20,7 @@ export function ProjectHeader({
   onSaveName: (value: string) => Promise<void>;
 }) {
   return (
-    <div className="border-b border-line-strong p-8">
+    <div className="p-8">
       <nav aria-label="Fil d'Ariane" className="flex flex-wrap items-center gap-2 text-sm text-muted">
         {projet.organisation ? (
           <Link

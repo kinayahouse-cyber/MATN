@@ -19,7 +19,7 @@ import {
 } from './types';
 import type { DatabaseView } from './useDatabaseView';
 
-const VIEW_LABELS: Record<ViewKind, string> = { list: 'Table', board: 'Board' };
+const VIEW_LABELS: Record<ViewKind, string> = { list: 'List', board: 'Card' };
 
 /**
  * Barre d'outils à divulgation progressive :

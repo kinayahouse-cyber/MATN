@@ -38,6 +38,7 @@ import { GridCross } from '@/components/grid/GridCross';
 import { StadeTimeline } from '@/components/StadeTimeline';
 import { ProjectHeader } from '@/components/ProjectHeader';
 import { ProjectMetrics } from '@/components/ProjectMetrics';
+import { ProjectFinance } from '@/components/ProjectFinance';
 import { CaptureBar } from '@/components/CaptureBar';
 
 const engagementOptions = Object.entries(ENGAGEMENT_LABELS).map(([value, label]) => ({
@@ -141,8 +142,10 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
   const budget = formatMontant(projet.budget);
   const budgetInterne = formatMontant(projet.budgetInterne);
+  const budgetEncaisse = formatMontant(projet.budgetEncaisse);
   const budgetRaw = projet.budget === null ? '' : String(projet.budget);
   const budgetInterneRaw = projet.budgetInterne === null ? '' : String(projet.budgetInterne);
+  const budgetEncaisseRaw = projet.budgetEncaisse === null ? '' : String(projet.budgetEncaisse);
   const dateDebutRaw = projet.dateDebut ? projet.dateDebut.toISOString().slice(0, 10) : '';
   const dateFinPrevueRaw = projet.dateFinPrevue
     ? projet.dateFinPrevue.toISOString().slice(0, 10)
@@ -150,22 +153,33 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="-mx-8 -my-6 md:-mx-10">
-      <ProjectHeader
-        projet={{
-          id: projet.id,
-          nom: projet.nom,
-          code: projet.code,
-          track: projet.track,
-          organisation: projet.organisation,
-        }}
-        onSaveName={updateProjetField.bind(null, projet.id, 'nom')}
-      />
+      <div className="grid grid-cols-1 border-b border-line-strong lg:grid-cols-[3fr_2fr]">
+        <ProjectHeader
+          projet={{
+            id: projet.id,
+            nom: projet.nom,
+            code: projet.code,
+            track: projet.track,
+            organisation: projet.organisation,
+          }}
+          onSaveName={updateProjetField.bind(null, projet.id, 'nom')}
+        />
+        <div className="border-t border-line-strong lg:border-l lg:border-t-0">
+          <ProjectFinance
+            budgetRaw={budgetRaw}
+            budgetDisplay={budget ?? undefined}
+            onSaveBudget={updateProjetField.bind(null, projet.id, 'budget')}
+            budgetDepense={totalDepenses}
+            budgetEncaisseRaw={budgetEncaisseRaw}
+            budgetEncaisseDisplay={budgetEncaisse ?? undefined}
+            onSaveBudgetEncaisse={updateProjetField.bind(null, projet.id, 'budgetEncaisse')}
+          />
+        </div>
+      </div>
 
       <ProjectMetrics
         stade={projet.stade}
         onSaveStade={updateProjetField.bind(null, projet.id, 'stade')}
-        budgetSpent={totalDepenses}
-        budgetTotal={projet.budget === null ? null : Number(projet.budget)}
         jalonsAtteints={jalonsAtteints}
         jalonsTotal={projet.jalons.length}
         tachesFaites={tachesFaites}
@@ -229,17 +243,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
           {/* ---------- Budgets / dates / timeline ---------- */}
           <section className="p-8">
-            <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
-              <div>
-                <Eyebrow>Budget</Eyebrow>
-                <EditableField
-                  value={budgetRaw}
-                  displayValue={budget ?? undefined}
-                  onSave={updateProjetField.bind(null, projet.id, 'budget')}
-                  type="number"
-                  className="mt-2 font-display text-xl tabular-nums"
-                />
-              </div>
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
               <div>
                 <Eyebrow>Budget interne</Eyebrow>
                 <EditableField

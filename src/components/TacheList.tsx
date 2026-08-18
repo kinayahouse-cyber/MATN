@@ -15,6 +15,7 @@ const statutTacheOptions = Object.entries(STATUT_TACHE_LABELS).map(([value, labe
   value,
   label,
 }));
+const STATUT_VALUES = Object.keys(STATUT_TACHE_LABELS);
 
 type Utilisateur = { id: string; nom: string | null; email: string };
 type Tache = {
@@ -26,9 +27,8 @@ type Tache = {
   assigneAId: string | null;
 };
 
-// Liste type « flux » plutôt que tableau (référence inbox) : identité forte à gauche, métadonnées
-// en pastilles sous le libellé, barre d'accent sur la tâche en cours. La barre d'outils apporte le
-// tri/filtre/groupement réel (même moteur que Projects/Clients/Orbit) sans changer cette grammaire.
+// Deux vues sur le même moteur de tri/filtre/groupement (référence : mockup « Card / List » du
+// project management panel) — Card = colonnes par statut, List = tableau éditable en place.
 export function TacheList({
   projetId,
   taches,
@@ -81,88 +81,158 @@ export function TacheList({
 
   const searchKeys = useCallback((t: Tache) => [t.libelle, t.description ?? ''], []);
   const view = useDatabaseView<Tache>({ rows: taches, properties, searchKeys });
-  const { filtered, groups } = view;
+  const { state, filtered, groups } = view;
 
-  const renderTache = (t: Tache) => {
-    const enCours = t.statut === 'EN_COURS';
+  // Vue Card : le groupement pilote les colonnes ; par défaut on retombe sur le statut (Kanban).
+  const boardGroups = useMemo(() => {
+    if (groups) return groups;
+    const prop = properties.find((p) => p.key === 'statut')!;
+    return STATUT_VALUES.map((s) => ({
+      key: s,
+      label: STATUT_TACHE_LABELS[s],
+      rows: filtered.filter((t) => prop.getValue(t) === s),
+    }));
+  }, [groups, filtered, properties]);
+
+  const renderCard = (t: Tache) => {
     const fait = t.statut === 'FAIT';
     return (
-      <li key={t.id} className="relative flex gap-3 py-3 pl-3">
-        {enCours && <span aria-hidden className="absolute bottom-3 left-0 top-3 w-0.5 bg-accent" />}
-        <div className="pt-0.5">
-          <TacheDoneCheckbox id={t.id} statut={t.statut} />
+      <div key={t.id} className="border border-line bg-bg p-3">
+        <div className="flex items-start justify-between gap-2">
+          <p className={`text-sm font-medium leading-snug ${fait ? 'text-muted line-through' : ''}`}>
+            {t.libelle}
+          </p>
+          <DeleteButton action={deleteTache.bind(null, t.id)} />
         </div>
+        {t.description && (
+          <p className="mt-1 line-clamp-2 text-xs text-muted">{t.description}</p>
+        )}
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          <EditableField
+            value={t.statut}
+            onSave={updateTacheField.bind(null, t.id, 'statut')}
+            type="select"
+            options={statutTacheOptions}
+            className={`border px-1.5 text-[10px] uppercase tracking-[0.08em] ${
+              t.statut === 'EN_COURS' ? 'border-accent text-accent' : 'border-line text-muted'
+            }`}
+          />
+          <EditableField
+            value={t.echeance ? t.echeance.toISOString().slice(0, 10) : ''}
+            onSave={updateTacheField.bind(null, t.id, 'echeance')}
+            type="date"
+            placeholder="échéance"
+            className="border border-line px-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted"
+          />
+          <EditableField
+            value={t.assigneAId ?? ''}
+            onSave={updateTacheField.bind(null, t.id, 'assigneAId')}
+            type="select"
+            options={userOptions}
+            placeholder="non assigné"
+            className="border border-line px-1.5 text-[10px] uppercase tracking-[0.08em] text-muted"
+          />
+        </div>
+      </div>
+    );
+  };
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
+  const renderRow = (t: Tache) => {
+    const fait = t.statut === 'FAIT';
+    return (
+      <tr key={t.id} className="border-b border-line">
+        <td className="py-2">
+          <div className="flex items-center gap-2">
+            <TacheDoneCheckbox id={t.id} statut={t.statut} />
             <EditableField
               value={t.libelle}
               onSave={updateTacheField.bind(null, t.id, 'libelle')}
               className={`flex-1 text-sm font-medium ${fait ? 'text-muted line-through' : ''}`}
             />
-            <DeleteButton action={deleteTache.bind(null, t.id)} />
           </div>
-
+        </td>
+        <td className="text-muted">
           <EditableField
-            value={t.description ?? ''}
-            onSave={updateTacheField.bind(null, t.id, 'description')}
-            type="textarea"
-            placeholder="+ description"
-            className="text-xs text-muted"
+            value={t.statut}
+            onSave={updateTacheField.bind(null, t.id, 'statut')}
+            type="select"
+            options={statutTacheOptions}
           />
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <EditableField
-              value={t.statut}
-              onSave={updateTacheField.bind(null, t.id, 'statut')}
-              type="select"
-              options={statutTacheOptions}
-              className={`border px-1.5 text-[10px] uppercase tracking-[0.08em] ${
-                enCours ? 'border-accent text-accent' : 'border-line text-muted'
-              }`}
-            />
-            <EditableField
-              value={t.echeance ? t.echeance.toISOString().slice(0, 10) : ''}
-              onSave={updateTacheField.bind(null, t.id, 'echeance')}
-              type="date"
-              placeholder="échéance"
-              className="border border-line px-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted"
-            />
-            <EditableField
-              value={t.assigneAId ?? ''}
-              onSave={updateTacheField.bind(null, t.id, 'assigneAId')}
-              type="select"
-              options={userOptions}
-              placeholder="non assigné"
-              className="border border-line px-1.5 text-[10px] uppercase tracking-[0.08em] text-muted"
-            />
-          </div>
-        </div>
-      </li>
+        </td>
+        <td className="text-muted">
+          <EditableField
+            value={t.echeance ? t.echeance.toISOString().slice(0, 10) : ''}
+            onSave={updateTacheField.bind(null, t.id, 'echeance')}
+            type="date"
+          />
+        </td>
+        <td className="text-muted">
+          <EditableField
+            value={t.assigneAId ?? ''}
+            onSave={updateTacheField.bind(null, t.id, 'assigneAId')}
+            type="select"
+            options={userOptions}
+            placeholder="non assigné"
+          />
+        </td>
+        <td>
+          <DeleteButton action={deleteTache.bind(null, t.id)} />
+        </td>
+      </tr>
     );
   };
 
   return (
     <div>
-      <DatabaseToolbar view={view} properties={properties} />
+      <DatabaseToolbar view={view} properties={properties} views={['list', 'board']} />
 
       {filtered.length === 0 ? (
         <p className="text-sm text-muted">
           {taches.length === 0 ? 'Aucune tâche.' : 'Aucun résultat pour ces filtres.'}
         </p>
+      ) : state.view === 'board' ? (
+        <div className="flex gap-6 overflow-x-auto pb-2">
+          {boardGroups.map((g, i) => (
+            <div key={g.key} className="flex w-64 shrink-0 gap-6">
+              {i > 0 && <div className="w-px shrink-0 bg-line" />}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs uppercase tracking-wide text-muted">
+                  {g.label} <span className="text-line-strong">({g.rows.length})</span>
+                </p>
+                <div className="mt-3 space-y-2">
+                  {g.rows.map(renderCard)}
+                  {g.rows.length === 0 && <p className="text-xs text-line-strong">—</p>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
-        <ul className="divide-y divide-line">
-          {groups
-            ? groups.map((g) => (
-                <Fragment key={g.key}>
-                  <li className="pb-1 pt-5 text-[10px] uppercase tracking-[0.12em] text-muted">
-                    {g.label} <span className="text-line-strong">({g.rows.length})</span>
-                  </li>
-                  {g.rows.map(renderTache)}
-                </Fragment>
-              ))
-            : filtered.map(renderTache)}
-        </ul>
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
+              <th className="py-2 font-normal">Tâche</th>
+              <th className="font-normal">Statut</th>
+              <th className="font-normal">Échéance</th>
+              <th className="font-normal">Assigné à</th>
+              <th className="w-6 font-normal" />
+            </tr>
+          </thead>
+          <tbody>
+            {groups
+              ? groups.map((g) => (
+                  <Fragment key={g.key}>
+                    <tr>
+                      <td colSpan={5} className="pb-1 pt-5 text-[10px] uppercase tracking-[0.12em] text-muted">
+                        {g.label} <span className="text-line-strong">({g.rows.length})</span>
+                      </td>
+                    </tr>
+                    {g.rows.map(renderRow)}
+                  </Fragment>
+                ))
+              : filtered.map(renderRow)}
+          </tbody>
+        </table>
       )}
 
       <table className="w-full">

@@ -175,8 +175,12 @@ model Projet {
   // `budget` = plafond facturable, suivi contre Document de type DEVIS.
   // `budgetInterne` = enveloppe d'investissement interne, non facturable (ADR-007 pt.2) —
   // pas de fusion entre les deux, même pour les Projets Track=Label.
-  budget        Decimal? @db.Decimal(14, 2)
-  budgetInterne Decimal? @db.Decimal(14, 2)
+  // `budgetEncaisse` = montant effectivement réglé par le client à date — saisi manuellement
+  // (pas de rapprochement facture/paiement modélisé pour l'instant), distinct de `budget` (plafond)
+  // et de la somme des Dépenses (coûts internes, pas des encaissements).
+  budget         Decimal? @db.Decimal(14, 2)
+  budgetInterne  Decimal? @db.Decimal(14, 2)
+  budgetEncaisse Decimal? @db.Decimal(14, 2)
 
   // Champs structurés propres au monde Label, peuplés uniquement pour track=LABEL (ADR-008) —
   // remplacent le champ JSON temporaire envisagé par ADR-007 pt.3 (devenu sans objet).
