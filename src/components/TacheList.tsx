@@ -291,7 +291,7 @@ export function TacheList({
           ))}
         </div>
       ) : state.view === 'timeline' ? (
-        <TacheTimeline taches={filtered} todayISO={todayISO} />
+        <TacheTimeline taches={filtered} utilisateurs={utilisateurs} todayISO={todayISO} />
       ) : (
         <table className="w-full text-left text-sm">
           <thead>
