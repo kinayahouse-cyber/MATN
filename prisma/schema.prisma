@@ -33,13 +33,25 @@ enum Track {
 // Auth — mono-utilisateur pour l'instant (ADR-005), structuré pour accueillir plusieurs comptes.
 // ---------------------------------------------------------------------------
 
+// ADMIN voit tout ; COLLABORATEUR est restreint aux projets où il est membre (Projet.membres),
+// et dans ces projets, seulement aux tâches et fichiers — pas de Finance, pas de CRM Client, pas
+// de Décisions/Notes (Livrable 06, périmètre stratégique interne).
+enum Role {
+  ADMIN
+  COLLABORATEUR
+}
+
 model Utilisateur {
   id        String   @id @default(cuid())
   email     String   @unique
   nom       String?
+  // Défaut ADMIN : un compte existant qui n'a pas encore de rôle explicite garde l'accès complet
+  // plutôt que d'être restreint silencieusement par cette migration.
+  role      Role     @default(ADMIN)
   createdAt DateTime @default(now())
 
   tachesAssignees Tache[]
+  projetsMembre   Projet[] @relation("ProjetMembres")
 
   @@map("utilisateurs")
 }
@@ -215,13 +227,19 @@ model Projet {
   organisation   Organisation? @relation(fields: [organisationId], references: [id])
   organisationId String?
 
-  contacts  Contact[]  @relation("ContactProjets")
+  contacts  Contact[]     @relation("ContactProjets")
   documents Document[]
   decisions Decision[]
   notesMatn Note[]
   assets    Asset[]
   taches    Tache[]
   depenses  Depense[]
+  membres   Utilisateur[] @relation("ProjetMembres")
+
+  // Portail client : lien magique, sans compte à créer côté client (Livrable 06 — accès externe
+  // volontairement minimal pour un premier jet). Présence = portail actif ; régénérer le jeton
+  // invalide l'ancien lien, le mettre à NULL désactive le portail sans perdre le reste.
+  portailToken String? @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

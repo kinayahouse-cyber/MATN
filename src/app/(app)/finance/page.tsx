@@ -1,10 +1,13 @@
 import { prisma } from '@/lib/prisma';
 import { PageHeader } from '@/components/PageHeader';
 import { FinanceBoard } from '@/components/FinanceBoard';
+import { requireAdmin } from '@/lib/auth/current-user';
 
 export const dynamic = 'force-dynamic';
 
 export default async function FinancePage() {
+  await requireAdmin();
+
   const projets = await prisma.projet.findMany({
     select: {
       id: true,

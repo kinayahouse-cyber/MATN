@@ -1,12 +1,19 @@
 import { prisma } from '@/lib/prisma';
 import { PageHeader } from '@/components/PageHeader';
 import { GlobalTacheList } from '@/components/GlobalTacheList';
+import { getCurrentUtilisateur, getCurrentRole } from '@/lib/auth/current-user';
 
 export const dynamic = 'force-dynamic';
 
 export default async function TachesPage() {
+  const [role, utilisateur] = await Promise.all([getCurrentRole(), getCurrentUtilisateur()]);
+  // Un Collaborateur ne voit que les tâches des projets où il est membre.
+  const where =
+    role === 'ADMIN' ? {} : { projet: { membres: { some: { id: utilisateur?.id ?? '' } } } };
+
   const [taches, utilisateurs] = await Promise.all([
     prisma.tache.findMany({
+      where,
       include: { projet: { select: { id: true, nom: true, code: true } } },
       orderBy: { createdAt: 'desc' },
     }),

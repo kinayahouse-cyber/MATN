@@ -2,8 +2,10 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { uploadToStorage } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/current-user';
 import type { Track, Engagement, TypeDocument, TypeAsset, StadeProjet, Prisma } from '@prisma/client';
 
 export async function createProjet(formData: FormData) {
@@ -371,6 +373,59 @@ export async function saveBrief(projetId: string, blocks: BriefBlock[]) {
   await prisma.projet.update({
     where: { id: projetId },
     data: { brief: clean },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Membres du projet (accès Collaborateur) et portail client — réservés à ADMIN.
+// ---------------------------------------------------------------------------
+
+export async function addMembreToProjet(projetId: string, utilisateurId: string) {
+  await requireAdmin();
+  if (!utilisateurId) throw new Error('Utilisateur requis');
+
+  await prisma.projet.update({
+    where: { id: projetId },
+    data: { membres: { connect: { id: utilisateurId } } },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+}
+
+export async function removeMembreFromProjet(projetId: string, utilisateurId: string) {
+  await requireAdmin();
+
+  await prisma.projet.update({
+    where: { id: projetId },
+    data: { membres: { disconnect: { id: utilisateurId } } },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+}
+
+// Lien magique : pas de compte client à créer, juste un jeton opaque dans l'URL. Regénérer
+// invalide l'ancien lien (nouveau jeton) ; révoquer le met à NULL sans perdre le reste du projet.
+export async function generatePortailToken(projetId: string) {
+  await requireAdmin();
+  const token = crypto.randomBytes(24).toString('hex');
+
+  await prisma.projet.update({
+    where: { id: projetId },
+    data: { portailToken: token },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+  return token;
+}
+
+export async function revokePortailToken(projetId: string) {
+  await requireAdmin();
+
+  await prisma.projet.update({
+    where: { id: projetId },
+    data: { portailToken: null },
   });
 
   revalidatePath(`/projets/${projetId}`);

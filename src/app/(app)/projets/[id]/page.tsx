@@ -22,19 +22,23 @@ import {
   deleteDepense,
   addDecision,
   addNote,
+  removeMembreFromProjet,
 } from '../actions';
 import { resolveFileUrl } from '@/lib/supabase/admin';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
 import { AddDepenseRow } from '@/components/AddDepenseRow';
 import { AddProjetContact } from '@/components/AddProjetContact';
+import { AddProjetMembre } from '@/components/AddProjetMembre';
 import { TacheList } from '@/components/TacheList';
 import { ProjectInfoCard } from '@/components/ProjectInfoCard';
-import { BriefEditor } from '@/components/BriefEditor';
+import { BriefEditor, BriefReadOnly } from '@/components/BriefEditor';
 import type { BriefBlock } from '../actions';
 import { ProjectFinance } from '@/components/ProjectFinance';
+import { ClientPortalCard } from '@/components/ClientPortalCard';
 import { ProjectSectionTabs } from '@/components/ProjectSectionTabs';
 import { CaptureBar } from '@/components/CaptureBar';
+import { getCurrentUtilisateur, getCurrentRole } from '@/lib/auth/current-user';
 
 const engagementOptions = Object.entries(ENGAGEMENT_LABELS).map(([value, label]) => ({
   value,
@@ -79,7 +83,7 @@ function formatEcheance(dateFinPrevue: Date | null, stade: string) {
 export default async function ProjetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [projet, utilisateurs, allContacts] = await Promise.all([
+  const [projet, utilisateurs, allContacts, role, moi] = await Promise.all([
     prisma.projet.findUnique({
       where: { id },
       include: {
@@ -91,13 +95,26 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         notesMatn: { orderBy: { createdAt: 'desc' }, take: 10 },
         taches: { orderBy: { createdAt: 'asc' } },
         depenses: { orderBy: { date: 'desc' } },
+        membres: { orderBy: { email: 'asc' } },
       },
     }),
     prisma.utilisateur.findMany({ orderBy: { email: 'asc' } }),
     prisma.contact.findMany({ include: { organisation: true }, orderBy: { nom: 'asc' } }),
+    getCurrentRole(),
+    getCurrentUtilisateur(),
   ]);
 
   if (!projet) notFound();
+
+  // Collaborateur : accès uniquement aux projets où il est membre — sinon même traitement qu'un
+  // projet inexistant (pas de fuite d'information sur les projets qui existent mais lui sont
+  // fermés).
+  const isMember = projet.membres.some((m) => m.id === moi?.id);
+  if (role !== 'ADMIN' && !isMember) notFound();
+  const canManage = role === 'ADMIN';
+
+  const memberIds = new Set(projet.membres.map((m) => m.id));
+  const nonMembres = utilisateurs.filter((u) => !memberIds.has(u.id));
 
   const linkedContactIds = new Set(projet.contacts.map((c) => c.id));
   const availableContacts = allContacts
@@ -156,9 +173,40 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
   // Ordre d'affichage des onglets de la colonne latérale ; les entrées sont déclarées plus bas
   // dans un ordre historique, on les réordonne ici plutôt que de déplacer de gros blocs JSX.
-  const TAB_ORDER = ['files', 'depenses', 'notes', 'assets', 'contacts'];
+  // Collaborateur : Files + Assets seulement (« just for the task and project files ») — Équipe,
+  // Dépenses, Notes et Contacts filtrés juste avant le rendu.
+  const TAB_ORDER = ['files', 'equipe', 'depenses', 'notes', 'assets', 'contacts'];
+  const visibleTabIds = canManage ? TAB_ORDER : ['files', 'assets'];
 
   const tabs = [
+    {
+      id: 'equipe',
+      label: 'Équipe',
+      content: (
+        <div className="max-w-xl">
+          <p className="text-[11px] leading-snug text-muted">
+            Un membre accède à ce projet en tant que Collaborateur : Tâches et Files uniquement,
+            pas Finance ni le reste.
+          </p>
+          {projet.membres.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">Aucun membre.</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-line">
+              {projet.membres.map((m) => (
+                <li key={m.id} className="flex items-center justify-between py-2 text-sm">
+                  <span>{m.nom ?? m.email}</span>
+                  <DeleteButton
+                    action={removeMembreFromProjet.bind(null, projet.id, m.id)}
+                    confirmMessage={`Retirer ${m.nom ?? m.email} de ce projet ?`}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+          <AddProjetMembre projetId={projet.id} utilisateurs={nonMembres} />
+        </div>
+      ),
+    },
     {
       id: 'files',
       label: 'Files',
@@ -429,7 +477,9 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
         <CaptureBar projetId={projet.id} feed={feed} addDecision={addDecision} addNote={addNote} />
       ),
     },
-  ].sort((a, b) => TAB_ORDER.indexOf(a.id) - TAB_ORDER.indexOf(b.id));
+  ]
+    .filter((t) => visibleTabIds.includes(t.id))
+    .sort((a, b) => TAB_ORDER.indexOf(a.id) - TAB_ORDER.indexOf(b.id));
 
   return (
     <div>
@@ -451,44 +501,59 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
             onSaveStadeLabel={updateProjetField.bind(null, projet.id, 'stadeLabel')}
             onSaveFormat={updateProjetField.bind(null, projet.id, 'format')}
             onSaveStatutDiffusion={updateProjetField.bind(null, projet.id, 'statutDiffusion')}
+            readOnly={!canManage}
           />
 
           <section className="mt-6 rounded-lg border border-line bg-surface p-5 shadow-card">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h2 className="font-display text-lg tracking-tight text-fg">Brief</h2>
               <div className="flex flex-wrap items-center gap-4">
-                <span className="flex items-center gap-2 text-xs text-muted">
-                  Budget interne
-                  <EditableField
-                    value={budgetInterneRaw}
-                    displayValue={budgetInterne ?? undefined}
-                    onSave={updateProjetField.bind(null, projet.id, 'budgetInterne')}
-                    type="number"
-                    className="font-mono text-fg"
-                  />
-                </span>
+                {canManage && (
+                  <span className="flex items-center gap-2 text-xs text-muted">
+                    Budget interne
+                    <EditableField
+                      value={budgetInterneRaw}
+                      displayValue={budgetInterne ?? undefined}
+                      onSave={updateProjetField.bind(null, projet.id, 'budgetInterne')}
+                      type="number"
+                      className="font-mono text-fg"
+                    />
+                  </span>
+                )}
                 <span className="flex items-center gap-2 text-xs text-muted">
                   Début
-                  <EditableField
-                    value={dateDebutRaw}
-                    onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
-                    type="date"
-                    className="text-fg"
-                  />
+                  {canManage ? (
+                    <EditableField
+                      value={dateDebutRaw}
+                      onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
+                      type="date"
+                      className="text-fg"
+                    />
+                  ) : (
+                    <span className="text-fg">{dateDebutRaw || '—'}</span>
+                  )}
                 </span>
                 <span className="flex items-center gap-2 text-xs text-muted">
                   Fin prévue
-                  <EditableField
-                    value={dateFinPrevueRaw}
-                    onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
-                    type="date"
-                    className="text-fg"
-                  />
+                  {canManage ? (
+                    <EditableField
+                      value={dateFinPrevueRaw}
+                      onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
+                      type="date"
+                      className="text-fg"
+                    />
+                  ) : (
+                    <span className="text-fg">{dateFinPrevueRaw || '—'}</span>
+                  )}
                 </span>
               </div>
             </div>
             <div className="mt-4">
-              <BriefEditor projetId={projet.id} initialBlocks={briefBlocks} />
+              {canManage ? (
+                <BriefEditor projetId={projet.id} initialBlocks={briefBlocks} />
+              ) : (
+                <BriefReadOnly blocks={briefBlocks} />
+              )}
             </div>
           </section>
 
@@ -507,15 +572,20 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
         {/* ---------- Colonne latérale : finances puis pièces rattachées ---------- */}
         <div className="min-w-0">
-          <ProjectFinance
-            budgetRaw={budgetRaw}
-            budgetDisplay={budget ?? undefined}
-            onSaveBudget={updateProjetField.bind(null, projet.id, 'budget')}
-            budgetDepense={totalDepenses}
-            budgetEncaisseRaw={budgetEncaisseRaw}
-            budgetEncaisseDisplay={budgetEncaisse ?? undefined}
-            onSaveBudgetEncaisse={updateProjetField.bind(null, projet.id, 'budgetEncaisse')}
-          />
+          {canManage && (
+            <>
+              <ProjectFinance
+                budgetRaw={budgetRaw}
+                budgetDisplay={budget ?? undefined}
+                onSaveBudget={updateProjetField.bind(null, projet.id, 'budget')}
+                budgetDepense={totalDepenses}
+                budgetEncaisseRaw={budgetEncaisseRaw}
+                budgetEncaisseDisplay={budgetEncaisse ?? undefined}
+                onSaveBudgetEncaisse={updateProjetField.bind(null, projet.id, 'budgetEncaisse')}
+              />
+              <ClientPortalCard projetId={projet.id} initialToken={projet.portailToken} />
+            </>
+          )}
 
           <div className="mt-6 overflow-hidden rounded-lg border border-line bg-surface shadow-card">
             <ProjectSectionTabs tabs={tabs} defaultTab="files" />
@@ -524,14 +594,16 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Suppression du projet — action destructrice, isolée en fin de page */}
-      <section className="mt-8">
-        <DeleteButton
-          action={deleteProjet.bind(null, projet.id)}
-          confirmMessage={`Supprimer le projet ${projet.nom} ? Fichiers, tâches et dépenses associés seront aussi supprimés.`}
-          label="Supprimer le projet"
-          className="text-xs uppercase tracking-wide text-muted hover:text-accent"
-        />
-      </section>
+      {canManage && (
+        <section className="mt-8">
+          <DeleteButton
+            action={deleteProjet.bind(null, projet.id)}
+            confirmMessage={`Supprimer le projet ${projet.nom} ? Fichiers, tâches et dépenses associés seront aussi supprimés.`}
+            label="Supprimer le projet"
+            className="text-xs uppercase tracking-wide text-muted hover:text-accent"
+          />
+        </section>
+      )}
     </div>
   );
 }

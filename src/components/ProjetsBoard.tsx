@@ -12,6 +12,7 @@ import { useDatabaseView } from '@/components/database/useDatabaseView';
 import type { PropertyDef } from '@/components/database/types';
 import { updateProjetField, deleteProjet, deleteProjets, moveProjets } from '@/app/(app)/projets/actions';
 import { TRACK_LABELS, STADE_PROJET_LABELS } from '@/lib/labels';
+import type { Role } from '@prisma/client';
 
 const trackOptions = Object.entries(TRACK_LABELS).map(([value, label]) => ({ value, label }));
 const stadeOptions = Object.entries(STADE_PROJET_LABELS).map(([value, label]) => ({
@@ -32,7 +33,19 @@ type Projet = {
   taches: Tache[];
 };
 
-export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients: Client[] }) {
+// Un Collaborateur ne voit que les projets où il est membre (déjà filtré côté serveur) et n'a
+// aucune des actions de gestion (créer, supprimer, changer client/track/stade) — lecture + accès
+// à l'ouverture du projet seulement.
+export function ProjetsBoard({
+  projets,
+  clients,
+  role = 'ADMIN',
+}: {
+  projets: Projet[];
+  clients: Client[];
+  role?: Role;
+}) {
+  const readOnly = role !== 'ADMIN';
   const [pending, startTransition] = useTransition();
   const clientOptions = useMemo(
     () => clients.map((c) => ({ value: c.id, label: c.nom })),
@@ -108,14 +121,16 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
 
   const renderRow = (p: Projet) => (
     <tr key={p.id} className="border-b border-line">
-      <td className="py-2">
-        <input
-          type="checkbox"
-          aria-label={`Sélectionner ${p.nom}`}
-          checked={selected.ids.has(p.id)}
-          onChange={() => selected.toggle(p.id)}
-        />
-      </td>
+      {!readOnly && (
+        <td className="py-2">
+          <input
+            type="checkbox"
+            aria-label={`Sélectionner ${p.nom}`}
+            checked={selected.ids.has(p.id)}
+            onChange={() => selected.toggle(p.id)}
+          />
+        </td>
+      )}
       {isVisible('code') && <td className="font-mono text-xs text-muted">{p.code}</td>}
       <td>
         <Link href={`/projets/${p.id}`} className="hover:underline">
@@ -124,48 +139,63 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
       </td>
       {isVisible('client') && (
         <td className="text-muted">
-          <EditableField
-            value={p.organisationId ?? ''}
-            onSave={updateProjetField.bind(null, p.id, 'organisationId')}
-            type="select"
-            options={clientOptions}
-          />
+          {readOnly ? (
+            clients.find((c) => c.id === p.organisationId)?.nom ?? '—'
+          ) : (
+            <EditableField
+              value={p.organisationId ?? ''}
+              onSave={updateProjetField.bind(null, p.id, 'organisationId')}
+              type="select"
+              options={clientOptions}
+            />
+          )}
         </td>
       )}
       {isVisible('track') && (
         <td className="text-muted">
-          <EditableField
-            value={p.track ?? ''}
-            onSave={updateProjetField.bind(null, p.id, 'track')}
-            type="select"
-            options={trackOptions}
-          />
+          {readOnly ? (
+            (p.track && TRACK_LABELS[p.track]) ?? '—'
+          ) : (
+            <EditableField
+              value={p.track ?? ''}
+              onSave={updateProjetField.bind(null, p.id, 'track')}
+              type="select"
+              options={trackOptions}
+            />
+          )}
         </td>
       )}
       {isVisible('stade') && (
         <td className="text-muted">
           <div className="flex items-center gap-2">
             <StatusDot active={p.stade === 'EN_COURS'} muted={p.stade === 'ABANDONNE'} />
-            <EditableField
-              value={p.stade}
-              onSave={updateProjetField.bind(null, p.id, 'stade')}
-              type="select"
-              options={stadeOptions}
-            />
+            {readOnly ? (
+              STADE_PROJET_LABELS[p.stade] ?? p.stade
+            ) : (
+              <EditableField
+                value={p.stade}
+                onSave={updateProjetField.bind(null, p.id, 'stade')}
+                type="select"
+                options={stadeOptions}
+              />
+            )}
           </div>
         </td>
       )}
-      <td>
-        <DeleteButton
-          action={deleteProjet.bind(null, p.id)}
-          confirmMessage={`Supprimer le projet ${p.nom} ? Fichiers, tâches et dépenses associés seront aussi supprimés.`}
-        />
-      </td>
+      {!readOnly && (
+        <td>
+          <DeleteButton
+            action={deleteProjet.bind(null, p.id)}
+            confirmMessage={`Supprimer le projet ${p.nom} ? Fichiers, tâches et dépenses associés seront aussi supprimés.`}
+          />
+        </td>
+      )}
     </tr>
   );
 
   const colCount =
-    3 + [isVisible('code'), isVisible('client'), isVisible('track'), isVisible('stade')].filter(
+    (readOnly ? 1 : 3) +
+    [isVisible('code'), isVisible('client'), isVisible('track'), isVisible('stade')].filter(
       Boolean
     ).length;
 
@@ -176,13 +206,15 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
         properties={properties}
         views={['list', 'board']}
         createSlot={
-          <Link href="/projets/new" className="text-sm text-muted hover:text-fg">
-            + Nouveau
-          </Link>
+          readOnly ? undefined : (
+            <Link href="/projets/new" className="text-sm text-muted hover:text-fg">
+              + Nouveau
+            </Link>
+          )
         }
       />
 
-      {state.view === 'list' && selected.ids.size > 0 && (
+      {!readOnly && state.view === 'list' && selected.ids.size > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-3 border border-line bg-line/20 px-3 py-2 text-sm">
           <span className="text-muted">{selected.ids.size} sélectionné(s)</span>
           <select
@@ -221,20 +253,22 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
-              <th className="w-6 py-2 font-normal">
-                <input
-                  type="checkbox"
-                  aria-label="Tout sélectionner"
-                  checked={selected.allSelected}
-                  onChange={selected.toggleAll}
-                />
-              </th>
+              {!readOnly && (
+                <th className="w-6 py-2 font-normal">
+                  <input
+                    type="checkbox"
+                    aria-label="Tout sélectionner"
+                    checked={selected.allSelected}
+                    onChange={selected.toggleAll}
+                  />
+                </th>
+              )}
               {isVisible('code') && <th className="font-normal">Code</th>}
               <th className="font-normal">Nom</th>
               {isVisible('client') && <th className="font-normal">Client</th>}
               {isVisible('track') && <th className="font-normal">Track</th>}
               {isVisible('stade') && <th className="font-normal">Stade</th>}
-              <th className="w-6 font-normal" />
+              {!readOnly && <th className="w-6 font-normal" />}
             </tr>
           </thead>
           <tbody>
@@ -253,7 +287,7 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
                   </Fragment>
                 ))
               : filtered.map(renderRow)}
-            {!groups && <AddProjetRow clients={clients} />}
+            {!readOnly && !groups && <AddProjetRow clients={clients} />}
           </tbody>
         </table>
       ) : (

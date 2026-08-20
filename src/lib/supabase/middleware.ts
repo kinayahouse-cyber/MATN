@@ -2,6 +2,9 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = ['/login'];
+// Portail client : accès par jeton opaque dans l'URL, pas par session Supabase — toute la
+// branche est publique, l'authentification se fait au niveau de la page (jeton valide ou 404).
+const PUBLIC_PREFIXES = ['/portail/'];
 
 // Échappatoire de développement local : permet d'inspecter l'UI sans session Supabase, contre
 // une base Postgres locale. Doublement verrouillée (NODE_ENV + variable explicite) et
@@ -40,7 +43,8 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p);
+  const isPublic =
+    PUBLIC_PATHS.some((p) => pathname === p) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 
   if (!user && !isPublic) {
     const loginUrl = new URL('/login', request.url);

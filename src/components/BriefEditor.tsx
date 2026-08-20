@@ -37,6 +37,23 @@ const newBlock = (type: BriefBlockType = 'p2'): BriefBlock => ({
   text: '',
 });
 
+// Rendu statique du brief — Collaborateur et portail client le lisent sans pouvoir l'éditer.
+// Composant serveur possible (aucune interactivité), volontairement séparé de BriefEditor plutôt
+// que masqué en CSS : évite d'envoyer tout le JS de l'éditeur (drag, refs, actions serveur) à un
+// lecteur qui n'en a pas l'usage.
+export function BriefReadOnly({ blocks }: { blocks: BriefBlock[] }) {
+  if (blocks.length === 0) return <p className="text-sm text-muted">Aucun brief.</p>;
+  return (
+    <div className="space-y-2">
+      {blocks.map((b) => (
+        <p key={b.id} className={BLOCK_CLASS[b.type]}>
+          {b.text}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 type RowProps = {
   block: BriefBlock;
   refSetter: (el: HTMLTextAreaElement | null) => void;

@@ -2,10 +2,13 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { TYPE_DOCUMENT_LABELS, STATUT_DOCUMENT_LABELS } from '@/lib/labels';
 import { PageHeader } from '@/components/PageHeader';
+import { requireAdmin } from '@/lib/auth/current-user';
 
 export const dynamic = 'force-dynamic';
 
 export default async function KnowledgeHubPage() {
+  await requireAdmin();
+
   const [decisions, notes, documents] = await Promise.all([
     prisma.decision.findMany({
       include: { projet: true, client: true },

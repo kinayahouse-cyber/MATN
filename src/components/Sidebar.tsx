@@ -11,23 +11,27 @@ import {
   IconFinance,
   IconKnowledge,
 } from '@/components/icons/nav';
+import type { Role } from '@prisma/client';
 
 // IA alignée sur le wireframe Project Workspace (Figma, 08/08) : Décisions/Documents/Recherche
 // se regroupent sous Knowledge Hub plutôt que d'être des items séparés. Label Workspace n'est pas
 // une entrée de nav distincte : c'est une vue filtrée (Track=Label) de Projects (ADR-006 pt.2).
 // Tâches/Finance sont des vues agrégées inter-projets, ajoutées après Orbit.
+// `adminOnly` : masqué pour un Collaborateur, qui ne doit voir que Projects (filtré à ses
+// projets membre) et Tâches (idem) — pas de Finance, pas de CRM Client, pas de Knowledge Hub.
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Home', Icon: IconHome },
-  { href: '/clients', label: 'Client', Icon: IconClient },
-  { href: '/projets', label: 'Projects', Icon: IconProjects },
-  { href: '/orbit', label: 'Orbit', Icon: IconOrbit },
-  { href: '/taches', label: 'Tâches', Icon: IconTasks },
-  { href: '/finance', label: 'Finance', Icon: IconFinance },
-  { href: '/knowledge-hub', label: 'Knowledge Hub', Icon: IconKnowledge },
+  { href: '/dashboard', label: 'Home', Icon: IconHome, adminOnly: true },
+  { href: '/clients', label: 'Client', Icon: IconClient, adminOnly: true },
+  { href: '/projets', label: 'Projects', Icon: IconProjects, adminOnly: false },
+  { href: '/orbit', label: 'Orbit', Icon: IconOrbit, adminOnly: true },
+  { href: '/taches', label: 'Tâches', Icon: IconTasks, adminOnly: false },
+  { href: '/finance', label: 'Finance', Icon: IconFinance, adminOnly: true },
+  { href: '/knowledge-hub', label: 'Knowledge Hub', Icon: IconKnowledge, adminOnly: true },
 ];
 
-export function Sidebar() {
+export function Sidebar({ role }: { role: Role }) {
   const pathname = usePathname();
+  const items = NAV_ITEMS.filter((item) => role === 'ADMIN' || !item.adminOnly);
 
   return (
     <nav className="flex w-64 shrink-0 flex-col gap-6 p-4">
@@ -39,7 +43,7 @@ export function Sidebar() {
       </div>
 
       <div className="flex flex-col gap-0.5">
-        {NAV_ITEMS.map(({ href, label, Icon }) => {
+        {items.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname?.startsWith(`${href}/`);
           return (
             <Link

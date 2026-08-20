@@ -1,10 +1,13 @@
 import { createClient } from '../actions';
 import { TRACK_LABELS, TYPE_ORGANISATION_LABELS } from '@/lib/labels';
+import { requireAdmin } from '@/lib/auth/current-user';
 
 const inputClass = 'mt-1 w-full border border-line bg-bg px-3 py-2 text-sm text-fg focus:outline-none focus:border-accent';
 const labelClass = 'text-sm text-muted';
 
-export default function NewClientPage() {
+export default async function NewClientPage() {
+  await requireAdmin();
+
   return (
     <div className="max-w-md">
       <h1 className="font-display text-2xl">Nouveau client</h1>

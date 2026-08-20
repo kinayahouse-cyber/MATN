@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { Card } from '@/components/ui/Card';
+import { requireAdmin } from '@/lib/auth/current-user';
 
 const STAT_ACCENTS = [
   'bg-violet-500/10 text-violet-300',
@@ -19,6 +20,8 @@ const LINKS = [
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
+  await requireAdmin();
+
   const [projetsEnCours, clients, tachesEnCours, documents] = await Promise.all([
     prisma.projet.count({ where: { stade: 'EN_COURS' } }),
     prisma.organisation.count(),

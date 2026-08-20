@@ -2,10 +2,12 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { ClientDetail } from '@/components/ClientDetail';
 import { SlideOver } from '@/components/SlideOver';
+import { requireAdmin } from '@/lib/auth/current-user';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ClientModal({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
 
   const client = await prisma.organisation.findUnique({
