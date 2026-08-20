@@ -9,9 +9,6 @@ import {
   TYPE_ASSET_LABELS,
 } from '@/lib/labels';
 import {
-  addJalon,
-  updateJalonField,
-  deleteJalon,
   addDocument,
   updateDocumentField,
   deleteDocument,
@@ -31,11 +28,11 @@ import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
 import { AddDepenseRow } from '@/components/AddDepenseRow';
 import { AddProjetContact } from '@/components/AddProjetContact';
-import { JalonAtteintCheckbox } from '@/components/JalonAtteintCheckbox';
 import { TacheList } from '@/components/TacheList';
 import { SectionTitle, Eyebrow } from '@/components/SectionTitle';
-import { StadeTimeline } from '@/components/StadeTimeline';
 import { ProjectInfoCard } from '@/components/ProjectInfoCard';
+import { BriefEditor } from '@/components/BriefEditor';
+import type { BriefBlock } from '../actions';
 import { ProjectFinance } from '@/components/ProjectFinance';
 import { ProjectSectionTabs } from '@/components/ProjectSectionTabs';
 import { CaptureBar } from '@/components/CaptureBar';
@@ -89,7 +86,6 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
       include: {
         organisation: true,
         contacts: { orderBy: { nom: 'asc' } },
-        jalons: { orderBy: { ordre: 'asc' } },
         documents: { orderBy: { createdAt: 'desc' } },
         assets: { orderBy: { createdAt: 'desc' } },
         decisions: { orderBy: { date: 'desc' }, take: 10 },
@@ -122,6 +118,14 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
   // le rendu serveur, sinon l'hydratation diverge selon le fuseau du navigateur.
   const todayISO = new Date().toISOString().slice(0, 10);
 
+  // `brief` est du Json libre côté base : on ne fait confiance qu'aux blocs bien formés.
+  const briefBlocks: BriefBlock[] = Array.isArray(projet.brief)
+    ? (projet.brief as unknown[]).filter(
+        (b): b is BriefBlock =>
+          typeof b === 'object' && b !== null && 'id' in b && 'type' in b && 'text' in b
+      )
+    : [];
+
   // Fusionne Décisions et Notes en un seul flux chronologique pour la barre de capture.
   const feed = [
     ...projet.decisions.map((d) => ({
@@ -153,101 +157,9 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
   // Ordre d'affichage des onglets de la colonne latérale ; les entrées sont déclarées plus bas
   // dans un ordre historique, on les réordonne ici plutôt que de déplacer de gros blocs JSX.
-  const TAB_ORDER = ['files', 'depenses', 'notes', 'assets', 'jalons', 'contacts'];
+  const TAB_ORDER = ['files', 'depenses', 'notes', 'assets', 'contacts'];
 
   const tabs = [
-    {
-      id: 'jalons',
-      label: 'Jalons',
-      content: (
-        <div>
-          <div className="mb-6 grid grid-cols-1 gap-4">
-            <div>
-              <Eyebrow>Budget interne</Eyebrow>
-              <EditableField
-                value={budgetInterneRaw}
-                displayValue={budgetInterne ?? undefined}
-                onSave={updateProjetField.bind(null, projet.id, 'budgetInterne')}
-                type="number"
-                className="mt-1 font-display text-lg tabular-nums"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Eyebrow>Début</Eyebrow>
-                <EditableField
-                  value={dateDebutRaw}
-                  onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
-                  type="date"
-                  className="mt-1 text-sm"
-                />
-              </div>
-              <div>
-                <Eyebrow>Fin prévue</Eyebrow>
-                <EditableField
-                  value={dateFinPrevueRaw}
-                  onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
-                  type="date"
-                  className="mt-1 text-sm"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="mb-6 overflow-x-auto">
-            <StadeTimeline stade={projet.stade} />
-          </div>
-
-          {projet.jalons.length === 0 ? (
-            <p className="text-sm text-muted">Aucun jalon.</p>
-          ) : (
-            /* Grammaire « emploi du temps » (référence) : pastille de date, libellé, filet de
-               conduite, puis marqueur d'état — pas de timeline verticale reliant les jalons. */
-            <ul className="space-y-1.5">
-              {projet.jalons.map((jalon) => (
-                <li key={jalon.id} className="flex items-center gap-2.5">
-                  <EditableField
-                    value={jalon.date.toISOString().slice(0, 10)}
-                    onSave={updateJalonField.bind(null, jalon.id, 'date')}
-                    type="date"
-                    className="w-[6.75rem] shrink-0 rounded-full bg-line/60 font-mono text-[11px] text-muted [&_button]:rounded-full [&_button]:px-2.5"
-                  />
-                  <EditableField
-                    value={jalon.libelle}
-                    onSave={updateJalonField.bind(null, jalon.id, 'libelle')}
-                    className={`min-w-0 max-w-[60%] text-sm font-medium ${
-                      jalon.atteint ? 'text-muted' : ''
-                    }`}
-                  />
-                  <span className="h-px flex-1 bg-line" aria-hidden />
-                  <JalonAtteintCheckbox id={jalon.id} atteint={jalon.atteint} />
-                  <DeleteButton action={deleteJalon.bind(null, jalon.id)} />
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <details className="mt-6">
-            <summary className="cursor-pointer text-sm text-muted hover:text-fg">
-              + Ajouter un jalon
-            </summary>
-            <form action={addJalon} className="mt-3 max-w-sm space-y-3">
-              <input type="hidden" name="projetId" value={projet.id} />
-              <div>
-                <label className={labelClass}>Libellé</label>
-                <input name="libelle" required className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Date</label>
-                <input name="date" type="date" required className={inputClass} />
-              </div>
-              <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
-                Ajouter
-              </button>
-            </form>
-          </details>
-        </div>
-      ),
-    },
     {
       id: 'files',
       label: 'Files',
@@ -559,7 +471,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
     <div>
       {/* Deux colonnes : à gauche le projet et son travail, à droite le suivi financier puis
           les pièces rattachées (fichiers, dépenses, notes, assets…). */}
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         {/* ---------- Colonne principale : présentation + tâches ---------- */}
         <div className="min-w-0">
           <ProjectInfoCard
@@ -572,6 +484,45 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
             engagementOptions={engagementOptions}
             onSaveEngagement={updateProjetField.bind(null, projet.id, 'engagement')}
           />
+
+          <section className="mt-6 rounded-lg border border-line bg-surface p-5 shadow-card">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h2 className="font-display text-lg tracking-tight text-fg">Brief</h2>
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="flex items-center gap-2 text-xs text-muted">
+                  Budget interne
+                  <EditableField
+                    value={budgetInterneRaw}
+                    displayValue={budgetInterne ?? undefined}
+                    onSave={updateProjetField.bind(null, projet.id, 'budgetInterne')}
+                    type="number"
+                    className="font-mono text-fg"
+                  />
+                </span>
+                <span className="flex items-center gap-2 text-xs text-muted">
+                  Début
+                  <EditableField
+                    value={dateDebutRaw}
+                    onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
+                    type="date"
+                    className="text-fg"
+                  />
+                </span>
+                <span className="flex items-center gap-2 text-xs text-muted">
+                  Fin prévue
+                  <EditableField
+                    value={dateFinPrevueRaw}
+                    onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
+                    type="date"
+                    className="text-fg"
+                  />
+                </span>
+              </div>
+            </div>
+            <div className="mt-4">
+              <BriefEditor projetId={projet.id} initialBlocks={briefBlocks} />
+            </div>
+          </section>
 
           <section className="mt-6 rounded-lg border border-line bg-surface p-5 shadow-card">
             <h2 className="font-display text-lg tracking-tight text-fg">Tâches</h2>
@@ -608,7 +559,7 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
       <section className="mt-8">
         <DeleteButton
           action={deleteProjet.bind(null, projet.id)}
-          confirmMessage={`Supprimer le projet ${projet.nom} ? Jalons, fichiers, tâches et dépenses associés seront aussi supprimés.`}
+          confirmMessage={`Supprimer le projet ${projet.nom} ? Fichiers, tâches et dépenses associés seront aussi supprimés.`}
           label="Supprimer le projet"
           className="text-xs uppercase tracking-wide text-muted hover:text-accent"
         />

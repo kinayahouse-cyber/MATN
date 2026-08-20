@@ -158,7 +158,7 @@ export function ProjetsBoard({ projets, clients }: { projets: Projet[]; clients:
       <td>
         <DeleteButton
           action={deleteProjet.bind(null, p.id)}
-          confirmMessage={`Supprimer le projet ${p.nom} ? Jalons, fichiers, tâches et dépenses associés seront aussi supprimés.`}
+          confirmMessage={`Supprimer le projet ${p.nom} ? Fichiers, tâches et dépenses associés seront aussi supprimés.`}
         />
       </td>
     </tr>

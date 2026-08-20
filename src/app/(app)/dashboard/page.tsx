@@ -19,18 +19,18 @@ const LINKS = [
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  const [projetsEnCours, clients, tachesEnCours, jalonsAVenir] = await Promise.all([
+  const [projetsEnCours, clients, tachesEnCours, documents] = await Promise.all([
     prisma.projet.count({ where: { stade: 'EN_COURS' } }),
     prisma.organisation.count(),
     prisma.tache.count({ where: { statut: { in: ['A_FAIRE', 'EN_COURS'] } } }),
-    prisma.jalon.count({ where: { atteint: false } }),
+    prisma.document.count(),
   ]);
 
   const stats = [
     { label: 'Projets en cours', value: projetsEnCours },
     { label: 'Clients', value: clients },
     { label: 'Tâches ouvertes', value: tachesEnCours },
-    { label: 'Jalons à venir', value: jalonsAVenir },
+    { label: 'Documents', value: documents },
   ];
 
   return (

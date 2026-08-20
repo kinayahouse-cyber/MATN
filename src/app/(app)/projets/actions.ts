@@ -53,48 +53,6 @@ export async function createProjetInline(
   revalidatePath('/projets');
 }
 
-export async function addJalon(formData: FormData) {
-  const projetId = String(formData.get('projetId') ?? '').trim();
-  const libelle = String(formData.get('libelle') ?? '').trim();
-  const dateRaw = String(formData.get('date') ?? '').trim();
-  if (!projetId || !libelle || !dateRaw) throw new Error('Champs requis manquants');
-
-  await prisma.jalon.create({
-    data: { projetId, libelle, date: new Date(dateRaw) },
-  });
-
-  revalidatePath(`/projets/${projetId}`);
-  redirect(`/projets/${projetId}`);
-}
-
-const JALON_EDITABLE_FIELDS = ['libelle', 'date', 'atteint'] as const;
-type JalonField = (typeof JALON_EDITABLE_FIELDS)[number];
-const JALON_DATE_FIELDS = new Set(['date']);
-const JALON_REQUIRED_FIELDS = new Set(['libelle', 'date']);
-
-export async function updateJalonField(id: string, field: JalonField, value: string) {
-  if (!JALON_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
-
-  const trimmed = value.trim();
-  if (!trimmed && JALON_REQUIRED_FIELDS.has(field)) throw new Error('Champ requis');
-
-  let parsed: string | boolean | Date | null = trimmed || null;
-  if (parsed !== null && JALON_DATE_FIELDS.has(field)) parsed = new Date(trimmed);
-  if (field === 'atteint') parsed = trimmed === 'true';
-
-  const jalon = await prisma.jalon.update({
-    where: { id },
-    data: { [field]: parsed } as Prisma.JalonUpdateInput,
-  });
-
-  revalidatePath(`/projets/${jalon.projetId}`);
-}
-
-export async function deleteJalon(id: string) {
-  const jalon = await prisma.jalon.delete({ where: { id } });
-  revalidatePath(`/projets/${jalon.projetId}`);
-}
-
 export async function addDocument(formData: FormData) {
   const projetId = String(formData.get('projetId') ?? '').trim();
   const type = String(formData.get('type') ?? '').trim() as TypeDocument;
@@ -287,11 +245,12 @@ const TACHE_EDITABLE_FIELDS = [
   'libelle',
   'description',
   'statut',
+  'dateDebut',
   'echeance',
   'assigneAId',
 ] as const;
 type TacheField = (typeof TACHE_EDITABLE_FIELDS)[number];
-const TACHE_DATE_FIELDS = new Set(['echeance']);
+const TACHE_DATE_FIELDS = new Set(['dateDebut', 'echeance']);
 const TACHE_REQUIRED_FIELDS = new Set(['libelle', 'statut']);
 
 export async function updateTacheField(id: string, field: TacheField, value: string) {
@@ -390,4 +349,23 @@ export async function addNote(formData: FormData) {
 
   revalidatePath(`/projets/${projetId}`);
   redirect(`/projets/${projetId}`);
+}
+
+// Brief rédigé en blocs typés. Le contenu est validé/normalisé ici plutôt que d'écrire tel quel
+// ce que le client envoie : seuls les types de bloc connus sont acceptés.
+const BRIEF_BLOCK_TYPES = ['h1', 'h2', 'h3', 'p1', 'p2', 'p3'] as const;
+export type BriefBlockType = (typeof BRIEF_BLOCK_TYPES)[number];
+export type BriefBlock = { id: string; type: BriefBlockType; text: string };
+
+export async function saveBrief(projetId: string, blocks: BriefBlock[]) {
+  const clean = blocks
+    .filter((b) => BRIEF_BLOCK_TYPES.includes(b.type))
+    .map((b) => ({ id: String(b.id), type: b.type, text: String(b.text ?? '') }));
+
+  await prisma.projet.update({
+    where: { id: projetId },
+    data: { brief: clean },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
 }

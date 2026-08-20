@@ -21,7 +21,7 @@ import type { DatabaseView } from './useDatabaseView';
 
 const VIEW_LABELS: Record<ViewKind, string> = {
   list: 'List',
-  cards: 'Card',
+  timeline: 'Timeline',
   board: 'Kanban',
   calendar: 'Calendrier',
 };

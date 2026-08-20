@@ -6,6 +6,7 @@ import { DeleteButton } from '@/components/DeleteButton';
 import { TacheDoneCheckbox } from '@/components/TacheDoneCheckbox';
 import { AddTacheRow } from '@/components/AddTacheRow';
 import { TacheCalendar } from '@/components/TacheCalendar';
+import { TacheTimeline } from '@/components/TacheTimeline';
 import { DatabaseToolbar } from '@/components/database/DatabaseToolbar';
 import { useDatabaseView } from '@/components/database/useDatabaseView';
 import type { PropertyDef } from '@/components/database/types';
@@ -26,7 +27,7 @@ const STATUT_VALUES = Object.keys(STATUT_TACHE_LABELS);
 const DRAGGABLE_GROUP_KEYS = ['statut', 'assigneAId'] as const;
 
 const statutTone = (statut: string) =>
-  statut === 'EN_COURS' ? 'accent' : statut === 'FAIT' ? 'positive' : 'neutral';
+  statut === 'EN_COURS' ? 'accent' : statut === 'FAIT' ? 'emerald' : 'neutral';
 
 type Utilisateur = { id: string; nom: string | null; email: string };
 type Tache = {
@@ -34,12 +35,13 @@ type Tache = {
   libelle: string;
   description: string | null;
   statut: string;
+  dateDebut: Date | null;
   echeance: Date | null;
   assigneAId: string | null;
 };
 
-// Quatre vues sur le même moteur de tri/filtre/groupement : List (tableau), Card (grille),
-// Kanban (colonnes, glisser-déposer pour changer d'état) et Calendrier (par échéance).
+// Quatre vues sur le même moteur de tri/filtre/groupement : List (tableau), Timeline (frise
+// début → échéance), Kanban (colonnes, glisser-déposer) et Calendrier (grille mensuelle).
 export function TacheList({
   projetId,
   taches,
@@ -84,6 +86,13 @@ export function TacheList({
         format: (v) => userOptions.find((o) => o.value === v)?.label ?? 'Non assigné',
         options: userOptions,
         alwaysVisible: true,
+      },
+      {
+        key: 'dateDebut',
+        label: 'Début',
+        getValue: (t) => (t.dateDebut ? t.dateDebut.toISOString().slice(0, 10) : ''),
+        alwaysVisible: true,
+        groupable: false,
       },
       {
         key: 'echeance',
@@ -202,6 +211,13 @@ export function TacheList({
         </td>
         <td className="text-muted">
           <EditableField
+            value={t.dateDebut ? t.dateDebut.toISOString().slice(0, 10) : ''}
+            onSave={updateTacheField.bind(null, t.id, 'dateDebut')}
+            type="date"
+          />
+        </td>
+        <td className="text-muted">
+          <EditableField
             value={t.echeance ? t.echeance.toISOString().slice(0, 10) : ''}
             onSave={updateTacheField.bind(null, t.id, 'echeance')}
             type="date"
@@ -231,7 +247,7 @@ export function TacheList({
       <DatabaseToolbar
         view={view}
         properties={properties}
-        views={['list', 'cards', 'board', 'calendar']}
+        views={['list', 'timeline', 'board', 'calendar']}
       />
 
       {state.view === 'calendar' ? (
@@ -274,31 +290,15 @@ export function TacheList({
             </div>
           ))}
         </div>
-      ) : state.view === 'cards' ? (
-        <div>
-          {groups ? (
-            groups.map((g) => (
-              <div key={g.key} className="mb-6">
-                <p className="mb-3 text-xs uppercase tracking-wide text-muted">
-                  {g.label} <span className="text-line-strong">({g.rows.length})</span>
-                </p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {g.rows.map((t) => renderCard(t))}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((t) => renderCard(t))}
-            </div>
-          )}
-        </div>
+      ) : state.view === 'timeline' ? (
+        <TacheTimeline taches={filtered} todayISO={todayISO} />
       ) : (
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
               <th className="py-2 font-normal">Tâche</th>
               <th className="font-normal">Statut</th>
+              <th className="font-normal">Début</th>
               <th className="font-normal">Échéance</th>
               <th className="font-normal">Assigné à</th>
               <th className="w-6 font-normal" />
@@ -310,7 +310,7 @@ export function TacheList({
                   <Fragment key={g.key}>
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="pb-1 pt-5 text-[10px] uppercase tracking-[0.12em] text-muted"
                       >
                         {g.label} <span className="text-line-strong">({g.rows.length})</span>

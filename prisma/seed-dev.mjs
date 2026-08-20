@@ -7,7 +7,6 @@ const prisma = new PrismaClient();
 async function main() {
   await prisma.depense.deleteMany();
   await prisma.tache.deleteMany();
-  await prisma.jalon.deleteMany();
   await prisma.asset.deleteMany();
   await prisma.document.deleteMany();
   await prisma.decision.deleteMany();
@@ -108,15 +107,6 @@ async function main() {
   });
   await prisma.projet.create({
     data: { code: 'KIN-25-S-003', nom: 'Projet annulé', stade: 'ABANDONNE' },
-  });
-
-  await prisma.jalon.createMany({
-    data: [
-      { projetId: projet.id, libelle: 'Cadrage & moodboard', date: new Date('2026-06-12'), atteint: true, ordre: 0 },
-      { projetId: projet.id, libelle: 'Présentation logotype V1', date: new Date('2026-07-03'), atteint: true, ordre: 1 },
-      { projetId: projet.id, libelle: 'Packaging trois origines', date: new Date('2026-08-20'), ordre: 2 },
-      { projetId: projet.id, libelle: 'Signalétique boutique', date: new Date('2026-09-10'), ordre: 3 },
-    ],
   });
 
   await prisma.document.createMany({

@@ -73,3 +73,32 @@ export const TYPE_ASSET_LABELS: Record<string, string> = {
   SON: 'Son',
   DOC: 'Doc',
 };
+
+export const ETAT_PROSPECTION_LABELS: Record<string, string> = {
+  A_CONTACTER: 'À contacter',
+  CONTACTE: 'Contacté',
+  EN_DISCUSSION: 'En discussion',
+  PROPOSITION_ENVOYEE: 'Proposition envoyée',
+  CLIENT_ACTIF: 'Client actif',
+  DORMANT: 'Dormant',
+  PERDU: 'Perdu',
+};
+
+// Couleur fixe par Track — Studio / Atelier / Label doivent se distinguer d'un coup d'œil,
+// donc un mapping explicite plutôt que la couleur dérivée par hash de `Tag`.
+export const TRACK_TONE: Record<string, 'sky' | 'amber' | 'fuchsia'> = {
+  STUDIO: 'sky',
+  ATELIER: 'amber',
+  LABEL: 'fuchsia',
+};
+
+// Couleur par état de prospection : progression froide → chaude, terminaux neutres/négatifs.
+export const ETAT_PROSPECTION_TONE: Record<string, 'slate' | 'sky' | 'violet' | 'amber' | 'emerald' | 'rose'> = {
+  A_CONTACTER: 'slate',
+  CONTACTE: 'sky',
+  EN_DISCUSSION: 'violet',
+  PROPOSITION_ENVOYEE: 'amber',
+  CLIENT_ACTIF: 'emerald',
+  DORMANT: 'slate',
+  PERDU: 'rose',
+};

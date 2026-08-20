@@ -8,18 +8,31 @@ import { DatabaseToolbar } from '@/components/database/DatabaseToolbar';
 import { useDatabaseView } from '@/components/database/useDatabaseView';
 import type { PropertyDef } from '@/components/database/types';
 import { updateOrganisationField, deleteOrganisation } from '@/app/(app)/clients/actions';
-import { TRACK_LABELS, TYPE_ORGANISATION_LABELS } from '@/lib/labels';
+import {
+  TRACK_LABELS,
+  TYPE_ORGANISATION_LABELS,
+  ETAT_PROSPECTION_LABELS,
+  TRACK_TONE,
+  ETAT_PROSPECTION_TONE,
+} from '@/lib/labels';
+import { TagSelect } from '@/components/ui/TagSelect';
+
 
 const typeOptions = Object.entries(TYPE_ORGANISATION_LABELS).map(([value, label]) => ({
   value,
   label,
 }));
 const trackOptions = Object.entries(TRACK_LABELS).map(([value, label]) => ({ value, label }));
+const etatProspectionOptions = Object.entries(ETAT_PROSPECTION_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 type Client = {
   id: string;
   nom: string;
   type: string;
+  etatProspection: string;
   track: string | null;
   secteur: string | null;
 };
@@ -34,6 +47,13 @@ export function ClientsList({ clients }: { clients: Client[] }) {
         getValue: (c) => c.type,
         format: (v) => TYPE_ORGANISATION_LABELS[v] ?? v,
         options: typeOptions,
+      },
+      {
+        key: 'etatProspection',
+        label: 'Prospection',
+        getValue: (c) => c.etatProspection,
+        format: (v) => ETAT_PROSPECTION_LABELS[v] ?? v,
+        options: etatProspectionOptions,
       },
       {
         key: 'track',
@@ -52,7 +72,13 @@ export function ClientsList({ clients }: { clients: Client[] }) {
   const { filtered, groups, isVisible } = view;
 
   const colCount =
-    2 + [isVisible('type'), isVisible('track'), isVisible('secteur')].filter(Boolean).length;
+    2 +
+    [
+      isVisible('type'),
+      isVisible('etatProspection'),
+      isVisible('track'),
+      isVisible('secteur'),
+    ].filter(Boolean).length;
 
   const renderRow = (c: Client) => (
     <tr key={c.id} className="border-b border-line">
@@ -71,14 +97,36 @@ export function ClientsList({ clients }: { clients: Client[] }) {
           />
         </td>
       )}
-      {isVisible('track') && (
-        <td className="text-muted">
-          <EditableField
-            value={c.track ?? ''}
-            onSave={updateOrganisationField.bind(null, c.id, 'track')}
-            type="select"
-            options={trackOptions}
+      {isVisible('etatProspection') && (
+        <td>
+          <TagSelect
+            value={c.etatProspection}
+            options={etatProspectionOptions}
+            onSave={updateOrganisationField.bind(null, c.id, 'etatProspection')}
+            tone={ETAT_PROSPECTION_TONE[c.etatProspection] ?? 'neutral'}
+            ariaLabel={`État de prospection de ${c.nom}`}
           />
+        </td>
+      )}
+      {isVisible('track') && (
+        <td>
+          {c.track ? (
+            <TagSelect
+              value={c.track}
+              options={trackOptions}
+              onSave={updateOrganisationField.bind(null, c.id, 'track')}
+              tone={TRACK_TONE[c.track] ?? 'neutral'}
+              ariaLabel={`Track de ${c.nom}`}
+            />
+          ) : (
+            <EditableField
+              value=""
+              onSave={updateOrganisationField.bind(null, c.id, 'track')}
+              type="select"
+              options={trackOptions}
+              className="text-muted"
+            />
+          )}
         </td>
       )}
       {isVisible('secteur') && (
@@ -118,6 +166,7 @@ export function ClientsList({ clients }: { clients: Client[] }) {
             <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
               <th className="py-2 font-normal">Nom</th>
               {isVisible('type') && <th className="font-normal">Type</th>}
+              {isVisible('etatProspection') && <th className="font-normal">Prospection</th>}
               {isVisible('track') && <th className="font-normal">Track</th>}
               {isVisible('secteur') && <th className="font-normal">Secteur</th>}
               <th className="w-6 font-normal" />

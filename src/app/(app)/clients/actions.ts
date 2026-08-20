@@ -48,6 +48,7 @@ export async function createContact(formData: FormData) {
 const ORGANISATION_EDITABLE_FIELDS = [
   'nom',
   'type',
+  'etatProspection',
   'secteur',
   'track',
   'nif',
@@ -58,7 +59,7 @@ const ORGANISATION_EDITABLE_FIELDS = [
   'notes',
 ] as const;
 type OrganisationField = (typeof ORGANISATION_EDITABLE_FIELDS)[number];
-const ORGANISATION_REQUIRED_FIELDS = new Set(['nom', 'type']);
+const ORGANISATION_REQUIRED_FIELDS = new Set(['nom', 'type', 'etatProspection']);
 
 export async function updateOrganisationField(id: string, field: OrganisationField, value: string) {
   if (!ORGANISATION_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');

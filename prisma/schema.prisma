@@ -54,6 +54,17 @@ enum TypeOrganisation {
   PRESCRIPTEUR
 }
 
+// Pipeline de prospection d'un Client, du premier contact au compte perdu/dormant.
+enum EtatProspection {
+  A_CONTACTER
+  CONTACTE
+  EN_DISCUSSION
+  PROPOSITION_ENVOYEE
+  CLIENT_ACTIF
+  DORMANT
+  PERDU
+}
+
 model Organisation {
   id      String           @id @default(cuid())
   nom     String
@@ -72,6 +83,11 @@ model Organisation {
   ai  String?
   rib String?
 
+  // État d'avancement commercial du Client — le `statut` (prospect/actif/dormant) prévu par
+  // l'ontologie (Livrable 03 §2) et laissé de côté lors d'ADR-006/007, ajouté ici sous forme de
+  // pipeline de prospection explicite.
+  etatProspection EtatProspection @default(A_CONTACTER)
+
   notes String?
 
   createdAt DateTime @default(now())
@@ -83,9 +99,8 @@ model Organisation {
   notesMatn Note[]
   documents Document[]
 
-  // NB : l'ontologie (Livrable 03 §2) prévoit aussi `statut` (prospect/actif/dormant/archivé) et
-  // une date de premier contact — écarts déjà notés dans l'audit de réconciliation, jamais
-  // transformés en chantier de migration décidé. Volontairement non ajoutés ici.
+  // NB : l'ontologie prévoit aussi une date de premier contact — écart noté dans l'audit de
+  // réconciliation, jamais transformé en chantier de migration décidé. Volontairement absent.
 
   @@map("organisations")
 }
@@ -168,6 +183,9 @@ model Projet {
 
   nom         String
   description String?
+  // Brief rédigé en blocs typés (h1/h2/h3/p1/p2/p3) — stocké tel quel :
+  // [{ id, type, text }]. Distinct de `description`, qui reste le résumé court.
+  brief       Json?
   track       Track?
   engagement  Engagement?
   stade       StadeProjet @default(DEVIS_ENVOYE)
@@ -204,32 +222,11 @@ model Projet {
   assets    Asset[]
   taches    Tache[]
   depenses  Depense[]
-  jalons    Jalon[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("projets")
-}
-
-// ---------------------------------------------------------------------------
-// Jalon — nouvelle entité (ADR-009), liste de jalons datés par Projet
-// ---------------------------------------------------------------------------
-
-model Jalon {
-  id       String @id @default(cuid())
-  projet   Projet @relation(fields: [projetId], references: [id], onDelete: Cascade)
-  projetId String
-
-  libelle String
-  date    DateTime
-  atteint Boolean @default(false) // interprétation du marqueur de statut du wireframe — à confirmer
-  ordre   Int     @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("jalons")
 }
 
 // ---------------------------------------------------------------------------
@@ -435,6 +432,9 @@ model Tache {
   libelle     String
   description String?
   statut      StatutTache @default(A_FAIRE)
+  // `dateDebut` + `echeance` forment la plage affichée par la vue Timeline. Les deux restent
+  // optionnelles : une tâche sans date de début est un simple point d'échéance sur la frise.
+  dateDebut   DateTime?
   echeance    DateTime?
 
   assigneA   Utilisateur? @relation(fields: [assigneAId], references: [id])

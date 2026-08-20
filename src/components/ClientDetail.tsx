@@ -1,5 +1,13 @@
 import Link from 'next/link';
-import { TRACK_LABELS, TYPE_ORGANISATION_LABELS, STADE_PROJET_LABELS } from '@/lib/labels';
+import {
+  TRACK_LABELS,
+  TYPE_ORGANISATION_LABELS,
+  STADE_PROJET_LABELS,
+  ETAT_PROSPECTION_LABELS,
+  TRACK_TONE,
+  ETAT_PROSPECTION_TONE,
+} from '@/lib/labels';
+import { TagSelect } from '@/components/ui/TagSelect';
 import {
   createContact,
   updateOrganisationField,
@@ -21,6 +29,10 @@ const typeOptions = Object.entries(TYPE_ORGANISATION_LABELS).map(([value, label]
   label,
 }));
 const trackOptions = Object.entries(TRACK_LABELS).map(([value, label]) => ({ value, label }));
+const etatProspectionOptions = Object.entries(ETAT_PROSPECTION_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 type Contact = {
   id: string;
@@ -35,6 +47,7 @@ type Client = {
   id: string;
   nom: string;
   type: string;
+  etatProspection: string;
   track: string | null;
   secteur: string | null;
   nif: string | null;
@@ -59,20 +72,40 @@ export function ClientDetail({ client }: { client: Client }) {
           onSave={updateOrganisationField.bind(null, client.id, 'nom')}
           className="font-display text-3xl tracking-tight [&_button]:border-b-2 [&_button]:border-fg [&_button]:pb-1"
         />
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] uppercase tracking-[0.08em] text-muted">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <TagSelect
+            value={client.etatProspection}
+            options={etatProspectionOptions}
+            onSave={updateOrganisationField.bind(null, client.id, 'etatProspection')}
+            tone={ETAT_PROSPECTION_TONE[client.etatProspection] ?? 'neutral'}
+            ariaLabel="État de prospection"
+          />
+          {client.track ? (
+            <TagSelect
+              value={client.track}
+              options={trackOptions}
+              onSave={updateOrganisationField.bind(null, client.id, 'track')}
+              tone={TRACK_TONE[client.track] ?? 'neutral'}
+              ariaLabel="Track"
+            />
+          ) : (
+            <EditableField
+              value=""
+              onSave={updateOrganisationField.bind(null, client.id, 'track')}
+              type="select"
+              options={trackOptions}
+              placeholder="Track"
+              className="text-[11px] text-muted"
+            />
+          )}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] uppercase tracking-[0.08em] text-muted">
           <EditableField
             value={client.type}
             onSave={updateOrganisationField.bind(null, client.id, 'type')}
             type="select"
             options={typeOptions}
-          />
-          <span aria-hidden>·</span>
-          <EditableField
-            value={client.track ?? ''}
-            onSave={updateOrganisationField.bind(null, client.id, 'track')}
-            type="select"
-            options={trackOptions}
-            placeholder="Track"
           />
           <span aria-hidden>·</span>
           <EditableField

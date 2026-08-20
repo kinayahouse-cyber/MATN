@@ -2,11 +2,7 @@
 
 import { useState, useTransition } from 'react';
 
-const TONE_CLASS = {
-  accent: 'border-accent/30 bg-accent/15 text-accent',
-  positive: 'border-emerald-500/25 bg-emerald-500/15 text-emerald-300',
-  neutral: 'border-line bg-line/60 text-muted',
-} as const;
+import { TAG_TONES, type TagTone } from './Tag';
 
 /**
  * Pastille éditable au clic : rendu identique à `Tag`, mais bascule en `<select>` à l'activation.
@@ -22,12 +18,12 @@ export function TagSelect({
   value: string;
   options: { value: string; label: string }[];
   onSave: (value: string) => Promise<void>;
-  tone?: keyof typeof TONE_CLASS;
+  tone?: TagTone;
   ariaLabel?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
-  const base = `inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-tight ${TONE_CLASS[tone]}`;
+  const base = `inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-tight ${TAG_TONES[tone]}`;
 
   if (editing) {
     return (
