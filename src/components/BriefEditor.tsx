@@ -106,12 +106,27 @@ export function BriefEditor({
     <div className={pending ? 'opacity-70' : ''}>
       <div className="space-y-1">
         {blocks.map((block) => (
-          <div key={block.id} className="group flex items-start gap-2">
+          <div
+            key={block.id}
+            className="group flex items-start gap-2"
+            // Le sélecteur de type est pointer-events-none tant qu'invisible, donc un clic dans
+            // sa zone (avant le texte) atterrit ici, sur la ligne — on le redirige vers le
+            // textarea plutôt que de laisser le clic ne rien faire.
+            onClick={(e) => {
+              if (e.target === e.currentTarget) refs.current.get(block.id)?.focus();
+            }}
+          >
             <select
               aria-label="Type de bloc"
               value={block.type}
               onChange={(e) => setType(block.id, e.target.value as BriefBlockType)}
-              className="mt-1 w-[3.25rem] shrink-0 rounded-md border border-line bg-bg px-1 py-0.5 text-[10px] uppercase tracking-wide text-muted opacity-0 transition-opacity duration-fast focus:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
+              // pointer-events-none tant qu'invisible : sans ça, un premier clic près du bord
+              // gauche du bloc (avant le texte du placeholder) tombe sur ce select plutôt que sur
+              // le textarea, et tout ce qui est tapé ensuite disparaît silencieusement dedans.
+              // Révélé uniquement par group-focus-within (le textarea a le focus), jamais par
+              // group-hover : un simple survol de la souris en route vers le textarea déclenche
+              // group-hover exactement au moment du clic, ce qui réactivait le piège.
+              className="pointer-events-none mt-1 w-[3.25rem] shrink-0 rounded-md border border-line bg-bg px-1 py-0.5 text-[10px] uppercase tracking-wide text-muted opacity-0 transition-opacity duration-fast group-focus-within:pointer-events-auto group-focus-within:opacity-100"
             >
               {BLOCK_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
