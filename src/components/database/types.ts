@@ -30,7 +30,7 @@ export type SortRule = {
   direction: 'asc' | 'desc';
 };
 
-export type ViewKind = 'list' | 'cards' | 'board';
+export type ViewKind = 'list' | 'cards' | 'board' | 'calendar';
 
 export type ViewState = {
   view: ViewKind;

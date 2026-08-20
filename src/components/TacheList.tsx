@@ -1,15 +1,16 @@
 'use client';
 
-import { Fragment, useCallback, useMemo } from 'react';
+import { Fragment, useCallback, useMemo, useState, useTransition } from 'react';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
 import { TacheDoneCheckbox } from '@/components/TacheDoneCheckbox';
 import { AddTacheRow } from '@/components/AddTacheRow';
+import { TacheCalendar } from '@/components/TacheCalendar';
 import { DatabaseToolbar } from '@/components/database/DatabaseToolbar';
 import { useDatabaseView } from '@/components/database/useDatabaseView';
 import type { PropertyDef } from '@/components/database/types';
 import { Card } from '@/components/ui/Card';
-import { Tag } from '@/components/ui/Tag';
+import { TagSelect } from '@/components/ui/TagSelect';
 import { updateTacheField, deleteTache } from '@/app/(app)/projets/actions';
 import { STATUT_TACHE_LABELS } from '@/lib/labels';
 
@@ -18,6 +19,14 @@ const statutTacheOptions = Object.entries(STATUT_TACHE_LABELS).map(([value, labe
   label,
 }));
 const STATUT_VALUES = Object.keys(STATUT_TACHE_LABELS);
+
+// Seules ces propriétés sont modifiables par glisser-déposer : ce sont celles que le kanban peut
+// écrire via updateTacheField. Grouper par autre chose désactive le drag plutôt que de faire
+// croire à une action possible.
+const DRAGGABLE_GROUP_KEYS = ['statut', 'assigneAId'] as const;
+
+const statutTone = (statut: string) =>
+  statut === 'EN_COURS' ? 'accent' : statut === 'FAIT' ? 'positive' : 'neutral';
 
 type Utilisateur = { id: string; nom: string | null; email: string };
 type Tache = {
@@ -29,17 +38,23 @@ type Tache = {
   assigneAId: string | null;
 };
 
-// Trois vues sur le même moteur de tri/filtre/groupement : List (tableau), Card (grille de
-// cartes non groupée), Kanban (colonnes par statut) — cf. layout demandé pour le workspace projet.
+// Quatre vues sur le même moteur de tri/filtre/groupement : List (tableau), Card (grille),
+// Kanban (colonnes, glisser-déposer pour changer d'état) et Calendrier (par échéance).
 export function TacheList({
   projetId,
   taches,
   utilisateurs,
+  todayISO,
 }: {
   projetId: string;
   taches: Tache[];
   utilisateurs: Utilisateur[];
+  todayISO: string;
 }) {
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overKey, setOverKey] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
   const userOptions = useMemo(
     () => utilisateurs.map((u) => ({ value: u.id, label: u.nom ?? u.email })),
     [utilisateurs]
@@ -86,6 +101,9 @@ export function TacheList({
   const { state, filtered, groups } = view;
 
   // Vue Kanban : le groupement pilote les colonnes ; par défaut on retombe sur le statut.
+  const groupKey = state.groupBy ?? 'statut';
+  const canDrag = (DRAGGABLE_GROUP_KEYS as readonly string[]).includes(groupKey);
+
   const kanbanGroups = useMemo(() => {
     if (groups) return groups;
     const prop = properties.find((p) => p.key === 'statut')!;
@@ -96,33 +114,65 @@ export function TacheList({
     }));
   }, [groups, filtered, properties]);
 
-  const renderCard = (t: Tache) => {
+  const dropInto = (targetValue: string) => {
+    const id = dragId;
+    setDragId(null);
+    setOverKey(null);
+    if (!id || !canDrag) return;
+    const tache = taches.find((t) => t.id === id);
+    if (!tache) return;
+    const current = groupKey === 'statut' ? tache.statut : (tache.assigneAId ?? '');
+    if (current === targetValue) return;
+    startTransition(async () => {
+      await updateTacheField(id, groupKey as 'statut' | 'assigneAId', targetValue);
+    });
+  };
+
+  const renderCard = (t: Tache, draggable = false) => {
     const fait = t.statut === 'FAIT';
     return (
-      <Card key={t.id} className="transition-colors duration-fast hover:border-line-strong">
-        <div className="flex items-start justify-between gap-2">
-          <p className={`text-sm font-medium leading-snug ${fait ? 'text-muted line-through' : ''}`}>
-            {t.libelle}
-          </p>
-          <DeleteButton action={deleteTache.bind(null, t.id)} />
-        </div>
-        {t.description && (
-          <p className="mt-1 line-clamp-2 text-xs text-muted">{t.description}</p>
-        )}
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <Tag tone={t.statut === 'EN_COURS' ? 'accent' : undefined}>
-            {STATUT_TACHE_LABELS[t.statut] ?? t.statut}
-          </Tag>
-          {t.echeance && (
-            <span className="font-mono text-[11px] text-muted">
-              {t.echeance.toISOString().slice(0, 10)}
-            </span>
-          )}
-          {t.assigneAId && (
-            <span className="text-[11px] text-muted">
-              {userOptions.find((o) => o.value === t.assigneAId)?.label}
-            </span>
-          )}
+      <Card
+        key={t.id}
+        className={`transition-colors duration-fast hover:border-line-strong ${
+          draggable ? 'cursor-grab active:cursor-grabbing' : ''
+        } ${dragId === t.id ? 'opacity-40' : ''}`}
+      >
+        <div
+          draggable={draggable}
+          onDragStart={() => setDragId(t.id)}
+          onDragEnd={() => {
+            setDragId(null);
+            setOverKey(null);
+          }}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <p
+              className={`text-sm font-medium leading-snug ${fait ? 'text-muted line-through' : ''}`}
+            >
+              {t.libelle}
+            </p>
+            <DeleteButton action={deleteTache.bind(null, t.id)} />
+          </div>
+          {t.description && <p className="mt-1 line-clamp-2 text-xs text-muted">{t.description}</p>}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <TagSelect
+              value={t.statut}
+              options={statutTacheOptions}
+              onSave={updateTacheField.bind(null, t.id, 'statut')}
+              tone={statutTone(t.statut)}
+              ariaLabel={`Statut de ${t.libelle}`}
+            />
+            {t.echeance && (
+              <span className="font-mono text-[11px] text-muted">
+                {t.echeance.toISOString().slice(0, 10)}
+              </span>
+            )}
+            {t.assigneAId && (
+              <span className="text-[11px] text-muted">
+                {userOptions.find((o) => o.value === t.assigneAId)?.label}
+              </span>
+            )}
+          </div>
         </div>
       </Card>
     );
@@ -173,54 +223,80 @@ export function TacheList({
     );
   };
 
-  return (
-    <div>
-      <DatabaseToolbar view={view} properties={properties} views={['list', 'cards', 'board']} />
+  const empty =
+    taches.length === 0 ? 'Aucune tâche.' : 'Aucun résultat pour ces filtres.';
 
-      {filtered.length === 0 ? (
-        <p className="text-sm text-muted">
-          {taches.length === 0 ? 'Aucune tâche.' : 'Aucun résultat pour ces filtres.'}
-        </p>
+  return (
+    <div className={pending ? 'opacity-70' : ''}>
+      <DatabaseToolbar
+        view={view}
+        properties={properties}
+        views={['list', 'cards', 'board', 'calendar']}
+      />
+
+      {state.view === 'calendar' ? (
+        <TacheCalendar taches={filtered} todayISO={todayISO} />
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-muted">{empty}</p>
       ) : state.view === 'board' ? (
-        <div className="flex gap-6 overflow-x-auto pb-2">
-          {kanbanGroups.map((g, i) => (
-            <div key={g.key} className="flex w-64 shrink-0 gap-6">
-              {i > 0 && <div className="w-px shrink-0 bg-line" />}
-              <div className="min-w-0 flex-1">
-                <p className="text-xs uppercase tracking-wide text-muted">
-                  {g.label} <span className="text-line-strong">({g.rows.length})</span>
-                </p>
-                <div className="mt-3 space-y-2">
-                  {g.rows.map(renderCard)}
-                  {g.rows.length === 0 && <p className="text-xs text-line-strong">—</p>}
-                </div>
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {kanbanGroups.map((g) => (
+            <div
+              key={g.key}
+              data-kanban-column={g.key}
+              onDragOver={(e) => {
+                if (!canDrag || !dragId) return;
+                e.preventDefault();
+                setOverKey(g.key);
+              }}
+              onDragLeave={() => setOverKey((k) => (k === g.key ? null : k))}
+              onDrop={(e) => {
+                e.preventDefault();
+                dropInto(g.key);
+              }}
+              className={`w-64 shrink-0 rounded-lg border p-2 transition-colors duration-fast ${
+                overKey === g.key && canDrag
+                  ? 'border-accent bg-accent/5'
+                  : 'border-line bg-bg/40'
+              }`}
+            >
+              <p className="px-1 py-1 text-xs uppercase tracking-wide text-muted">
+                {g.label} <span className="text-line-strong">({g.rows.length})</span>
+              </p>
+              <div className="mt-1 space-y-2">
+                {g.rows.map((t) => renderCard(t, canDrag))}
+                {g.rows.length === 0 && (
+                  <p className="px-1 py-4 text-center text-xs text-line-strong">
+                    {canDrag ? 'Déposer ici' : '—'}
+                  </p>
+                )}
               </div>
             </div>
           ))}
         </div>
       ) : state.view === 'cards' ? (
         <div>
-          {groups
-            ? groups.map((g) => (
-                <div key={g.key} className="mb-6">
-                  <p className="mb-3 text-xs uppercase tracking-wide text-muted">
-                    {g.label} <span className="text-line-strong">({g.rows.length})</span>
-                  </p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {g.rows.map(renderCard)}
-                  </div>
+          {groups ? (
+            groups.map((g) => (
+              <div key={g.key} className="mb-6">
+                <p className="mb-3 text-xs uppercase tracking-wide text-muted">
+                  {g.label} <span className="text-line-strong">({g.rows.length})</span>
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {g.rows.map((t) => renderCard(t))}
                 </div>
-              ))
-            : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {filtered.map(renderCard)}
-                </div>
-              )}
+              </div>
+            ))
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {filtered.map((t) => renderCard(t))}
+            </div>
+          )}
         </div>
       ) : (
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
+            <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
               <th className="py-2 font-normal">Tâche</th>
               <th className="font-normal">Statut</th>
               <th className="font-normal">Échéance</th>
@@ -233,7 +309,10 @@ export function TacheList({
               ? groups.map((g) => (
                   <Fragment key={g.key}>
                     <tr>
-                      <td colSpan={5} className="pb-1 pt-5 text-[10px] uppercase tracking-[0.12em] text-muted">
+                      <td
+                        colSpan={5}
+                        className="pb-1 pt-5 text-[10px] uppercase tracking-[0.12em] text-muted"
+                      >
                         {g.label} <span className="text-line-strong">({g.rows.length})</span>
                       </td>
                     </tr>
@@ -245,11 +324,13 @@ export function TacheList({
         </table>
       )}
 
-      <table className="w-full">
-        <tbody>
-          <AddTacheRow projetId={projetId} utilisateurs={utilisateurs} />
-        </tbody>
-      </table>
+      {state.view !== 'calendar' && (
+        <table className="w-full">
+          <tbody>
+            <AddTacheRow projetId={projetId} utilisateurs={utilisateurs} />
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

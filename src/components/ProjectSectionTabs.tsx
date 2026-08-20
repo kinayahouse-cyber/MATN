@@ -13,23 +13,23 @@ export function ProjectSectionTabs({ tabs, defaultTab }: { tabs: Tab[]; defaultT
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-line-strong px-8 py-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-5 py-3.5">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setActive(t.id)}
-            className={`border-b pb-1 text-sm uppercase tracking-[0.08em] transition-colors duration-fast ${
+            className={`rounded-md px-2 py-1 text-xs uppercase tracking-[0.08em] transition-colors duration-fast ${
               current.id === t.id
-                ? 'border-accent text-fg'
-                : 'border-transparent text-muted hover:text-fg'
+                ? 'bg-line/60 text-fg'
+                : 'text-muted hover:bg-line/30 hover:text-fg'
             }`}
           >
             {t.label}
           </button>
         ))}
       </div>
-      <div className="p-8">{current.content}</div>
+      <div className="p-5">{current.content}</div>
     </div>
   );
 }
