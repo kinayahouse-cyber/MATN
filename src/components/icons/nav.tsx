@@ -43,6 +43,22 @@ export function IconOrbit({ className = 'h-[18px] w-[18px]' }: Props) {
   );
 }
 
+export function IconTasks({ className = 'h-[18px] w-[18px]' }: Props) {
+  return (
+    <svg {...svgProps} className={className}>
+      <path d="M9 6H20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 12H20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 18H20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 6L5 7L7 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 12L5 13L7 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 18L5 19L7 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+export function IconFinance({ className = 'h-[18px] w-[18px]' }: Props) {
+  return (
+    <svg {...svgProps} className={className}>
+      <path d="M3 20.4V3.6C3 3.26863 3.26863 3 3.6 3H20.4C20.7314 3 21 3.26863 21 3.6V20.4C21 20.7314 20.7314 21 20.4 21H3.6C3.26863 21 3 20.7314 3 20.4Z" stroke="currentColor" strokeWidth="1.5"/><path d="M7 15L10.5 11L13 13.5L17 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13.5 9H17V12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 export function IconKnowledge({ className = 'h-[18px] w-[18px]' }: Props) {
   return (
     <svg {...svgProps} className={className}>

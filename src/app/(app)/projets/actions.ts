@@ -175,6 +175,7 @@ export async function updateProjetField(id: string, field: ProjetField, value: s
 
   revalidatePath('/projets');
   revalidatePath(`/projets/${id}`);
+  revalidatePath('/finance');
 }
 
 export async function deleteProjet(id: string) {
@@ -268,11 +269,13 @@ export async function updateTacheField(id: string, field: TacheField, value: str
   });
 
   revalidatePath(`/projets/${tache.projetId}`);
+  revalidatePath('/taches');
 }
 
 export async function deleteTache(id: string) {
   const tache = await prisma.tache.delete({ where: { id } });
   revalidatePath(`/projets/${tache.projetId}`);
+  revalidatePath('/taches');
 }
 
 export async function createDepenseInline(projetId: string, categorie: string, montant: string) {
@@ -287,6 +290,7 @@ export async function createDepenseInline(projetId: string, categorie: string, m
   });
 
   revalidatePath(`/projets/${projetId}`);
+  revalidatePath('/finance');
 }
 
 const DEPENSE_EDITABLE_FIELDS = ['categorie', 'montant', 'date', 'notes'] as const;
@@ -311,11 +315,13 @@ export async function updateDepenseField(id: string, field: DepenseField, value:
   });
 
   if (depense.projetId) revalidatePath(`/projets/${depense.projetId}`);
+  revalidatePath('/finance');
 }
 
 export async function deleteDepense(id: string) {
   const depense = await prisma.depense.delete({ where: { id } });
   if (depense.projetId) revalidatePath(`/projets/${depense.projetId}`);
+  revalidatePath('/finance');
 }
 
 // Capture à friction minimale (Livrable 06 §3) : intitulé + justification suffisent pour logger

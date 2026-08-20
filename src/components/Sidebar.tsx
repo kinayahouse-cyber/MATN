@@ -7,17 +7,22 @@ import {
   IconClient,
   IconProjects,
   IconOrbit,
+  IconTasks,
+  IconFinance,
   IconKnowledge,
 } from '@/components/icons/nav';
 
 // IA alignée sur le wireframe Project Workspace (Figma, 08/08) : Décisions/Documents/Recherche
 // se regroupent sous Knowledge Hub plutôt que d'être des items séparés. Label Workspace n'est pas
 // une entrée de nav distincte : c'est une vue filtrée (Track=Label) de Projects (ADR-006 pt.2).
+// Tâches/Finance sont des vues agrégées inter-projets, ajoutées après Orbit.
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Home', Icon: IconHome },
   { href: '/clients', label: 'Client', Icon: IconClient },
   { href: '/projets', label: 'Projects', Icon: IconProjects },
   { href: '/orbit', label: 'Orbit', Icon: IconOrbit },
+  { href: '/taches', label: 'Tâches', Icon: IconTasks },
+  { href: '/finance', label: 'Finance', Icon: IconFinance },
   { href: '/knowledge-hub', label: 'Knowledge Hub', Icon: IconKnowledge },
 ];
 
