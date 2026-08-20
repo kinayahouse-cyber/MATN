@@ -35,8 +35,7 @@ import { JalonAtteintCheckbox } from '@/components/JalonAtteintCheckbox';
 import { TacheList } from '@/components/TacheList';
 import { SectionTitle, Eyebrow } from '@/components/SectionTitle';
 import { StadeTimeline } from '@/components/StadeTimeline';
-import { ProjectHeader } from '@/components/ProjectHeader';
-import { ProjectMetrics } from '@/components/ProjectMetrics';
+import { ProjectInfoCard } from '@/components/ProjectInfoCard';
 import { ProjectFinance } from '@/components/ProjectFinance';
 import { ProjectSectionTabs } from '@/components/ProjectSectionTabs';
 import { CaptureBar } from '@/components/CaptureBar';
@@ -118,8 +117,6 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
   const assetUrlById = new Map(projet.assets.map((asset, i) => [asset.id, assetUrls[i]]));
 
   const totalDepenses = projet.depenses.reduce((sum, d) => sum + Number(d.montant), 0);
-  const jalonsAtteints = projet.jalons.filter((j) => j.atteint).length;
-  const tachesFaites = projet.taches.filter((t) => t.statut === 'FAIT').length;
   const echeance = formatEcheance(projet.dateFinPrevue, projet.stade);
 
   // Fusionne Décisions et Notes en un seul flux chronologique pour la barre de capture.
@@ -153,90 +150,44 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
 
   const tabs = [
     {
-      id: 'tasks',
-      label: 'Tâches',
-      content: <TacheList projetId={projet.id} taches={projet.taches} utilisateurs={utilisateurs} />,
-    },
-    {
-      id: 'overview',
-      label: 'Overview',
-      content: (
-        <div>
-          <Eyebrow>Overview</Eyebrow>
-          <div className="mt-4">
-            <SectionTitle size="md">Description</SectionTitle>
-          </div>
-          <EditableField
-            value={projet.description ?? ''}
-            onSave={updateProjetField.bind(null, projet.id, 'description')}
-            type="textarea"
-            placeholder="Aucune description."
-            className="mt-6 max-w-3xl text-sm leading-relaxed text-fg"
-          />
-
-          <div className="mt-8 flex items-start justify-between gap-8">
-            {/* Scopes : contenu non encore modélisé (ADR-009) — placeholder */}
-            <div>
-              <SectionTitle size="sm" uppercase={false}>
-                Scopes&nbsp;:
-              </SectionTitle>
-              <p className="mt-2 text-sm text-muted">À définir.</p>
-            </div>
-            <div className="text-right">
-              <Eyebrow>Type d&rsquo;engagements</Eyebrow>
-              <EditableField
-                value={projet.engagement ?? ''}
-                onSave={updateProjetField.bind(null, projet.id, 'engagement')}
-                type="select"
-                options={engagementOptions}
-                className="mt-2 text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="mt-10 border-t border-line-strong pt-8">
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
-              <div>
-                <Eyebrow>Budget interne</Eyebrow>
-                <EditableField
-                  value={budgetInterneRaw}
-                  displayValue={budgetInterne ?? undefined}
-                  onSave={updateProjetField.bind(null, projet.id, 'budgetInterne')}
-                  type="number"
-                  className="mt-2 font-display text-xl tabular-nums"
-                />
-              </div>
-              <div>
-                <Eyebrow>Début</Eyebrow>
-                <EditableField
-                  value={dateDebutRaw}
-                  onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
-                  type="date"
-                  className="mt-2 text-sm"
-                />
-              </div>
-              <div>
-                <Eyebrow>Fin prévue</Eyebrow>
-                <EditableField
-                  value={dateFinPrevueRaw}
-                  onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
-                  type="date"
-                  className="mt-2 text-sm"
-                />
-              </div>
-            </div>
-            <div className="mt-10">
-              <StadeTimeline stade={projet.stade} />
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
       id: 'jalons',
       label: 'Jalons',
       content: (
         <div>
+          <div className="mb-8 grid grid-cols-1 gap-8 sm:grid-cols-3">
+            <div>
+              <Eyebrow>Budget interne</Eyebrow>
+              <EditableField
+                value={budgetInterneRaw}
+                displayValue={budgetInterne ?? undefined}
+                onSave={updateProjetField.bind(null, projet.id, 'budgetInterne')}
+                type="number"
+                className="mt-2 font-display text-xl tabular-nums"
+              />
+            </div>
+            <div>
+              <Eyebrow>Début</Eyebrow>
+              <EditableField
+                value={dateDebutRaw}
+                onSave={updateProjetField.bind(null, projet.id, 'dateDebut')}
+                type="date"
+                className="mt-2 text-sm"
+              />
+            </div>
+            <div>
+              <Eyebrow>Fin prévue</Eyebrow>
+              <EditableField
+                value={dateFinPrevueRaw}
+                onSave={updateProjetField.bind(null, projet.id, 'dateFinPrevue')}
+                type="date"
+                className="mt-2 text-sm"
+              />
+            </div>
+          </div>
+          <div className="mb-8">
+            <StadeTimeline stade={projet.stade} />
+          </div>
+
           {projet.jalons.length === 0 ? (
             <p className="text-sm text-muted">Aucun jalon.</p>
           ) : (
@@ -600,47 +551,45 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
   ];
 
   return (
-    <div className="-mx-8 -my-6 md:-mx-10">
-      <div className="grid grid-cols-1 border-b border-line-strong lg:grid-cols-[3fr_2fr]">
-        <ProjectHeader
-          projet={{
-            id: projet.id,
-            nom: projet.nom,
-            code: projet.code,
-            track: projet.track,
-            organisation: projet.organisation,
-          }}
+    <div>
+      {/* ============ Bandeau du haut : identité + description (gauche) / finances (droite) ============ */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[3fr_2fr]">
+        <ProjectInfoCard
+          projet={projet}
           onSaveName={updateProjetField.bind(null, projet.id, 'nom')}
+          onSaveStade={updateProjetField.bind(null, projet.id, 'stade')}
+          onSaveDescription={updateProjetField.bind(null, projet.id, 'description')}
+          echeanceLabel={echeance.label}
+          echeanceLate={echeance.late}
+          engagementOptions={engagementOptions}
+          onSaveEngagement={updateProjetField.bind(null, projet.id, 'engagement')}
         />
-        <div className="border-t border-line-strong lg:border-l lg:border-t-0">
-          <ProjectFinance
-            budgetRaw={budgetRaw}
-            budgetDisplay={budget ?? undefined}
-            onSaveBudget={updateProjetField.bind(null, projet.id, 'budget')}
-            budgetDepense={totalDepenses}
-            budgetEncaisseRaw={budgetEncaisseRaw}
-            budgetEncaisseDisplay={budgetEncaisse ?? undefined}
-            onSaveBudgetEncaisse={updateProjetField.bind(null, projet.id, 'budgetEncaisse')}
-          />
-        </div>
+        <ProjectFinance
+          budgetRaw={budgetRaw}
+          budgetDisplay={budget ?? undefined}
+          onSaveBudget={updateProjetField.bind(null, projet.id, 'budget')}
+          budgetDepense={totalDepenses}
+          budgetEncaisseRaw={budgetEncaisseRaw}
+          budgetEncaisseDisplay={budgetEncaisse ?? undefined}
+          onSaveBudgetEncaisse={updateProjetField.bind(null, projet.id, 'budgetEncaisse')}
+        />
       </div>
 
-      <ProjectMetrics
-        stade={projet.stade}
-        onSaveStade={updateProjetField.bind(null, projet.id, 'stade')}
-        jalonsAtteints={jalonsAtteints}
-        jalonsTotal={projet.jalons.length}
-        tachesFaites={tachesFaites}
-        tachesTotal={projet.taches.length}
-        echeanceLabel={echeance.label}
-        echeanceLate={echeance.late}
-      />
+      {/* ============ Tâches : toujours visible, 3 vues (List / Card / Kanban) ============ */}
+      <section className="mt-8">
+        <h2 className="font-display text-xl tracking-tight text-fg">Tâches</h2>
+        <div className="mt-4">
+          <TacheList projetId={projet.id} taches={projet.taches} utilisateurs={utilisateurs} />
+        </div>
+      </section>
 
-      {/* ============ Corps : un seul module actif à la fois (référence Frame 41/60) ============ */}
-      <ProjectSectionTabs tabs={tabs} defaultTab="tasks" />
+      {/* ============ Le reste : un seul module actif à la fois ============ */}
+      <div className="mt-8 overflow-hidden rounded-lg border border-line bg-surface shadow-card">
+        <ProjectSectionTabs tabs={tabs} defaultTab="jalons" />
+      </div>
 
       {/* Suppression du projet — action destructrice, isolée en fin de page */}
-      <section className="border-t border-line-strong p-8">
+      <section className="mt-8">
         <DeleteButton
           action={deleteProjet.bind(null, projet.id)}
           confirmMessage={`Supprimer le projet ${projet.nom} ? Jalons, fichiers, tâches et dépenses associés seront aussi supprimés.`}

@@ -1,5 +1,6 @@
 import { EditableField } from '@/components/EditableField';
 import { FieldRow } from '@/components/properties/FieldRow';
+import { Card } from '@/components/ui/Card';
 
 function formatDZD(n: number) {
   return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(n) + ' DZD';
@@ -26,7 +27,7 @@ export function ProjectFinance({
   onSaveBudgetEncaisse: (value: string) => Promise<void>;
 }) {
   return (
-    <div className="flex h-full flex-col justify-center p-8">
+    <Card padded={false} className="flex h-full flex-col justify-center p-8">
       <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Vue financière</p>
       <div className="mt-3 divide-y divide-line">
         <FieldRow label="Budget total">
@@ -51,6 +52,6 @@ export function ProjectFinance({
           />
         </FieldRow>
       </div>
-    </div>
+    </Card>
   );
 }

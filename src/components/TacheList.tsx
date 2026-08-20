@@ -8,6 +8,8 @@ import { AddTacheRow } from '@/components/AddTacheRow';
 import { DatabaseToolbar } from '@/components/database/DatabaseToolbar';
 import { useDatabaseView } from '@/components/database/useDatabaseView';
 import type { PropertyDef } from '@/components/database/types';
+import { Card } from '@/components/ui/Card';
+import { Tag } from '@/components/ui/Tag';
 import { updateTacheField, deleteTache } from '@/app/(app)/projets/actions';
 import { STATUT_TACHE_LABELS } from '@/lib/labels';
 
@@ -27,8 +29,8 @@ type Tache = {
   assigneAId: string | null;
 };
 
-// Deux vues sur le même moteur de tri/filtre/groupement (référence : mockup « Card / List » du
-// project management panel) — Card = colonnes par statut, List = tableau éditable en place.
+// Trois vues sur le même moteur de tri/filtre/groupement : List (tableau), Card (grille de
+// cartes non groupée), Kanban (colonnes par statut) — cf. layout demandé pour le workspace projet.
 export function TacheList({
   projetId,
   taches,
@@ -83,8 +85,8 @@ export function TacheList({
   const view = useDatabaseView<Tache>({ rows: taches, properties, searchKeys });
   const { state, filtered, groups } = view;
 
-  // Vue Card : le groupement pilote les colonnes ; par défaut on retombe sur le statut (Kanban).
-  const boardGroups = useMemo(() => {
+  // Vue Kanban : le groupement pilote les colonnes ; par défaut on retombe sur le statut.
+  const kanbanGroups = useMemo(() => {
     if (groups) return groups;
     const prop = properties.find((p) => p.key === 'statut')!;
     return STATUT_VALUES.map((s) => ({
@@ -97,7 +99,7 @@ export function TacheList({
   const renderCard = (t: Tache) => {
     const fait = t.statut === 'FAIT';
     return (
-      <div key={t.id} className="border border-line bg-bg p-3">
+      <Card key={t.id} className="transition-colors duration-fast hover:border-line-strong">
         <div className="flex items-start justify-between gap-2">
           <p className={`text-sm font-medium leading-snug ${fait ? 'text-muted line-through' : ''}`}>
             {t.libelle}
@@ -107,33 +109,22 @@ export function TacheList({
         {t.description && (
           <p className="mt-1 line-clamp-2 text-xs text-muted">{t.description}</p>
         )}
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-          <EditableField
-            value={t.statut}
-            onSave={updateTacheField.bind(null, t.id, 'statut')}
-            type="select"
-            options={statutTacheOptions}
-            className={`border px-1.5 text-[10px] uppercase tracking-[0.08em] ${
-              t.statut === 'EN_COURS' ? 'border-accent text-accent' : 'border-line text-muted'
-            }`}
-          />
-          <EditableField
-            value={t.echeance ? t.echeance.toISOString().slice(0, 10) : ''}
-            onSave={updateTacheField.bind(null, t.id, 'echeance')}
-            type="date"
-            placeholder="échéance"
-            className="border border-line px-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted"
-          />
-          <EditableField
-            value={t.assigneAId ?? ''}
-            onSave={updateTacheField.bind(null, t.id, 'assigneAId')}
-            type="select"
-            options={userOptions}
-            placeholder="non assigné"
-            className="border border-line px-1.5 text-[10px] uppercase tracking-[0.08em] text-muted"
-          />
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <Tag tone={t.statut === 'EN_COURS' ? 'accent' : undefined}>
+            {STATUT_TACHE_LABELS[t.statut] ?? t.statut}
+          </Tag>
+          {t.echeance && (
+            <span className="font-mono text-[11px] text-muted">
+              {t.echeance.toISOString().slice(0, 10)}
+            </span>
+          )}
+          {t.assigneAId && (
+            <span className="text-[11px] text-muted">
+              {userOptions.find((o) => o.value === t.assigneAId)?.label}
+            </span>
+          )}
         </div>
-      </div>
+      </Card>
     );
   };
 
@@ -184,7 +175,7 @@ export function TacheList({
 
   return (
     <div>
-      <DatabaseToolbar view={view} properties={properties} views={['list', 'board']} />
+      <DatabaseToolbar view={view} properties={properties} views={['list', 'cards', 'board']} />
 
       {filtered.length === 0 ? (
         <p className="text-sm text-muted">
@@ -192,7 +183,7 @@ export function TacheList({
         </p>
       ) : state.view === 'board' ? (
         <div className="flex gap-6 overflow-x-auto pb-2">
-          {boardGroups.map((g, i) => (
+          {kanbanGroups.map((g, i) => (
             <div key={g.key} className="flex w-64 shrink-0 gap-6">
               {i > 0 && <div className="w-px shrink-0 bg-line" />}
               <div className="min-w-0 flex-1">
@@ -206,6 +197,25 @@ export function TacheList({
               </div>
             </div>
           ))}
+        </div>
+      ) : state.view === 'cards' ? (
+        <div>
+          {groups
+            ? groups.map((g) => (
+                <div key={g.key} className="mb-6">
+                  <p className="mb-3 text-xs uppercase tracking-wide text-muted">
+                    {g.label} <span className="text-line-strong">({g.rows.length})</span>
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {g.rows.map(renderCard)}
+                  </div>
+                </div>
+              ))
+            : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {filtered.map(renderCard)}
+                </div>
+              )}
         </div>
       ) : (
         <table className="w-full text-left text-sm">
