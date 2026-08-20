@@ -15,10 +15,15 @@ const MONTHS = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ];
+const MONTHS_SHORT = MONTHS.map((m) => m.slice(0, 3).toLowerCase() + '.');
+
+type Mode = 'month' | 'week';
 
 // Tout le calcul de dates se fait en UTC, comme partout ailleurs dans l'app (les échéances sont
 // formatées via toISOString().slice(0,10)) — évite les décalages d'un jour selon le fuseau.
 const key = (d: Date) => d.toISOString().slice(0, 10);
+const addDays = (d: Date, n: number) =>
+  new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + n));
 
 function statutDot(statut: string) {
   if (statut === 'FAIT') return 'bg-emerald-400';
@@ -27,16 +32,18 @@ function statutDot(statut: string) {
 }
 
 /**
- * Vue calendrier des tâches : grille mensuelle, une pastille par tâche à sa date d'échéance.
- * `todayISO` vient du serveur pour que le mois initial soit identique au rendu client.
+ * Vue calendrier des tâches : grille mensuelle ou hebdomadaire (bascule Mois/Semaine, référence
+ * Notion), une pastille par tâche à sa date d'échéance. `todayISO` vient du serveur pour que la
+ * période initiale soit identique au rendu client.
  */
 export function TacheCalendar({ taches, todayISO }: { taches: Tache[]; todayISO: string }) {
-  const [year0, month0] = useMemo(() => {
-    const [y, m] = todayISO.split('-').map(Number);
-    return [y, m - 1];
+  const today = useMemo(() => {
+    const [y, m, d] = todayISO.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d));
   }, [todayISO]);
 
-  const [cursor, setCursor] = useState({ year: year0, month: month0 });
+  const [mode, setMode] = useState<Mode>('month');
+  const [anchor, setAnchor] = useState(today);
 
   const byDate = useMemo(() => {
     const map = new Map<string, Tache[]>();
@@ -51,52 +58,95 @@ export function TacheCalendar({ taches, todayISO }: { taches: Tache[]; todayISO:
 
   const sansEcheance = useMemo(() => taches.filter((t) => !t.echeance), [taches]);
 
-  // 6 semaines pleines : la hauteur de la grille ne saute pas d'un mois à l'autre.
-  const cells = useMemo(() => {
-    const first = new Date(Date.UTC(cursor.year, cursor.month, 1));
+  // 6 semaines pleines en mode mois : la hauteur de la grille ne saute pas d'un mois à l'autre.
+  const monthCells = useMemo(() => {
+    const first = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), 1));
     const shift = (first.getUTCDay() + 6) % 7; // lundi = 0
-    const start = new Date(Date.UTC(cursor.year, cursor.month, 1 - shift));
+    const start = addDays(first, -shift);
     return Array.from({ length: 42 }, (_, i) => {
-      const d = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + i));
-      return { date: d, k: key(d), inMonth: d.getUTCMonth() === cursor.month };
+      const d = addDays(start, i);
+      return { date: d, k: key(d), inMonth: d.getUTCMonth() === anchor.getUTCMonth() };
     });
-  }, [cursor]);
+  }, [anchor]);
 
-  const shiftMonth = (delta: number) =>
-    setCursor(({ year, month }) => {
-      const d = new Date(Date.UTC(year, month + delta, 1));
-      return { year: d.getUTCFullYear(), month: d.getUTCMonth() };
+  const weekCells = useMemo(() => {
+    const shift = (anchor.getUTCDay() + 6) % 7; // lundi = 0
+    const start = addDays(anchor, -shift);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = addDays(start, i);
+      return { date: d, k: key(d), inMonth: true };
     });
+  }, [anchor]);
+
+  const cells = mode === 'month' ? monthCells : weekCells;
+  const itemCap = mode === 'month' ? 3 : 8;
+
+  const headerLabel =
+    mode === 'month'
+      ? `${MONTHS[anchor.getUTCMonth()]} ${anchor.getUTCFullYear()}`
+      : (() => {
+          const start = weekCells[0].date;
+          const end = weekCells[6].date;
+          const sameMonth = start.getUTCMonth() === end.getUTCMonth();
+          const startLabel = sameMonth
+            ? `${start.getUTCDate()}`
+            : `${start.getUTCDate()} ${MONTHS_SHORT[start.getUTCMonth()]}`;
+          return `${startLabel} – ${end.getUTCDate()} ${MONTHS_SHORT[end.getUTCMonth()]} ${end.getUTCFullYear()}`;
+        })();
+
+  const shift = (delta: number) =>
+    setAnchor((a) =>
+      mode === 'month'
+        ? new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + delta, 1))
+        : addDays(a, delta * 7)
+    );
 
   return (
     <div>
-      <div className="mb-3 flex items-center gap-2">
-        <button
-          type="button"
-          aria-label="Mois précédent"
-          onClick={() => shiftMonth(-1)}
-          className="rounded-md px-2 py-1 text-sm text-muted transition-colors duration-fast hover:bg-line/60 hover:text-fg"
-        >
-          ‹
-        </button>
-        <span className="min-w-[9rem] text-center text-sm font-medium text-fg">
-          {MONTHS[cursor.month]} {cursor.year}
-        </span>
-        <button
-          type="button"
-          aria-label="Mois suivant"
-          onClick={() => shiftMonth(1)}
-          className="rounded-md px-2 py-1 text-sm text-muted transition-colors duration-fast hover:bg-line/60 hover:text-fg"
-        >
-          ›
-        </button>
-        <button
-          type="button"
-          onClick={() => setCursor({ year: year0, month: month0 })}
-          className="ml-2 rounded-md px-2 py-1 text-xs text-muted transition-colors duration-fast hover:bg-line/60 hover:text-fg"
-        >
-          Aujourd&rsquo;hui
-        </button>
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={mode === 'month' ? 'Mois précédent' : 'Semaine précédente'}
+            onClick={() => shift(-1)}
+            className="rounded-md px-2 py-1 text-sm text-muted transition-colors duration-fast hover:bg-line/60 hover:text-fg"
+          >
+            ‹
+          </button>
+          <span className="min-w-[10rem] text-center text-sm font-medium text-fg">
+            {headerLabel}
+          </span>
+          <button
+            type="button"
+            aria-label={mode === 'month' ? 'Mois suivant' : 'Semaine suivante'}
+            onClick={() => shift(1)}
+            className="rounded-md px-2 py-1 text-sm text-muted transition-colors duration-fast hover:bg-line/60 hover:text-fg"
+          >
+            ›
+          </button>
+          <button
+            type="button"
+            onClick={() => setAnchor(today)}
+            className="ml-1 rounded-md px-2 py-1 text-xs text-muted transition-colors duration-fast hover:bg-line/60 hover:text-fg"
+          >
+            Aujourd&rsquo;hui
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1 text-xs">
+          {(['week', 'month'] as Mode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              className={`rounded-md px-2 py-1 transition-colors duration-fast ${
+                mode === m ? 'bg-line/60 text-fg' : 'text-muted hover:bg-line/30 hover:text-fg'
+              }`}
+            >
+              {m === 'week' ? 'Semaine' : 'Mois'}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-7 gap-px overflow-hidden rounded-md border border-line bg-line">
@@ -112,7 +162,9 @@ export function TacheCalendar({ taches, todayISO }: { taches: Tache[]; todayISO:
           return (
             <div
               key={cell.k}
-              className={`min-h-[5.5rem] bg-bg p-1.5 ${cell.inMonth ? '' : 'opacity-40'}`}
+              className={`bg-bg p-1.5 ${mode === 'month' ? 'min-h-[5.5rem]' : 'min-h-[14rem]'} ${
+                cell.inMonth ? '' : 'opacity-40'
+              }`}
             >
               <span
                 className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] tabular-nums ${
@@ -122,7 +174,7 @@ export function TacheCalendar({ taches, todayISO }: { taches: Tache[]; todayISO:
                 {cell.date.getUTCDate()}
               </span>
               <div className="mt-1 space-y-1">
-                {items.slice(0, 3).map((t) => (
+                {items.slice(0, itemCap).map((t) => (
                   <div
                     key={t.id}
                     title={`${t.libelle} — ${STATUT_TACHE_LABELS[t.statut] ?? t.statut}`}
@@ -138,8 +190,8 @@ export function TacheCalendar({ taches, todayISO }: { taches: Tache[]; todayISO:
                     </span>
                   </div>
                 ))}
-                {items.length > 3 && (
-                  <p className="px-1.5 text-[10px] text-muted">+{items.length - 3}</p>
+                {items.length > itemCap && (
+                  <p className="px-1.5 text-[10px] text-muted">+{items.length - itemCap}</p>
                 )}
               </div>
             </div>
