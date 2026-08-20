@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { updateProjetField, deleteProjet } from '@/app/(app)/projets/actions';
-import { FieldRow, Chip } from '@/components/properties/FieldRow';
+import { Card } from '@/components/ui/Card';
+import { Tag } from '@/components/ui/Tag';
 import { TRACK_LABELS, STADE_PROJET_LABELS } from '@/lib/labels';
 
 const STADE_VALUES = Object.keys(STADE_PROJET_LABELS);
@@ -53,89 +54,61 @@ export function ProjetCard({ projet }: { projet: Projet }) {
   };
 
   const done = projet.taches.filter((t) => t.statut === 'FAIT').length;
+  const pct = projet.taches.length > 0 ? Math.round((done / projet.taches.length) * 100) : 0;
 
   return (
     <div ref={ref} className={`relative ${pending ? 'opacity-50' : ''}`}>
-      {/* Bandeau de la carte : type d'objet à gauche, code à droite (référence « // INVOICE ») */}
-      <div className="flex items-baseline justify-between bg-line/40 px-3 py-2">
-        <span className="text-[10px] uppercase tracking-[0.12em] text-muted">// Projet</span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted">
-          {projet.code}
-        </span>
-      </div>
+      <Card className="transition-colors duration-fast hover:border-line-strong">
+        <div className="flex items-start justify-between gap-2">
+          <Link href={`/projets/${projet.id}`} className="min-w-0 flex-1">
+            <p className="font-display text-base leading-tight tracking-tight text-fg">
+              {projet.nom}
+            </p>
+            <p className="mt-0.5 text-xs text-muted">
+              {projet.organisation?.nom ?? 'Projet interne'}
+            </p>
+          </Link>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setMoveOpen(false);
+              setMenuOpen((v) => !v);
+            }}
+            className="shrink-0 rounded-md px-1.5 py-0.5 text-muted hover:bg-line hover:text-fg"
+          >
+            ⋯
+          </button>
+        </div>
 
-      {/* Carte encartée dans la surface, comme la référence */}
-      <div className="border-x border-b border-line bg-line/40 p-3">
-        <div className="border border-line-strong bg-bg p-4">
-          <div className="flex items-start justify-between gap-2">
-            <Link href={`/projets/${projet.id}`} className="min-w-0 flex-1">
-              <p className="font-display text-lg leading-tight tracking-tight">{projet.nom}</p>
-              <p className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-muted">
-                {projet.organisation?.nom ?? 'Projet interne'}
-              </p>
-            </Link>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMoveOpen(false);
-                setMenuOpen((v) => !v);
-              }}
-              className="shrink-0 px-1 text-muted hover:text-fg"
-            >
-              ⋯
-            </button>
-          </div>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {projet.track && <Tag>{TRACK_LABELS[projet.track]}</Tag>}
+          <Tag tone={projet.stade === 'EN_COURS' ? 'accent' : undefined}>
+            {STADE_PROJET_LABELS[projet.stade] ?? projet.stade}
+          </Tag>
+        </div>
 
-          <div className="my-3 h-px bg-line" />
-
-          <div className="divide-y divide-line">
-            <FieldRow label="Track">
-              {projet.track ? TRACK_LABELS[projet.track] : '—'}
-            </FieldRow>
-            <FieldRow label="Tâches">
-              <span className="font-mono text-xs">
+        {projet.taches.length > 0 && (
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-xs text-muted">
+              <span>Tâches</span>
+              <span className="font-mono">
                 {done}/{projet.taches.length}
               </span>
-            </FieldRow>
-            <FieldRow label="Statut">
-              <Chip tone={projet.stade === 'EN_COURS' ? 'accent' : 'neutral'}>
-                {STADE_PROJET_LABELS[projet.stade] ?? projet.stade}
-              </Chip>
-            </FieldRow>
+            </div>
+            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-line">
+              <div className="h-1 rounded-full bg-accent" style={{ width: `${pct}%` }} />
+            </div>
           </div>
-
-          {projet.taches.length > 0 && (
-            <>
-              <div className="my-3 h-px bg-line" />
-              <ul className="space-y-1">
-                {projet.taches.slice(0, 3).map((t) => (
-                  <li
-                    key={t.id}
-                    className={`text-xs ${
-                      t.statut === 'FAIT' ? 'text-muted line-through' : 'text-fg'
-                    }`}
-                  >
-                    {t.libelle}
-                  </li>
-                ))}
-                {projet.taches.length > 3 && (
-                  <li className="text-[10px] uppercase tracking-[0.08em] text-muted">
-                    +{projet.taches.length - 3} autres
-                  </li>
-                )}
-              </ul>
-            </>
-          )}
-        </div>
-      </div>
+        )}
+      </Card>
 
       {menuOpen && (
-        <div className="absolute right-3 top-10 z-10 w-40 border border-line-strong bg-bg py-1 text-xs shadow-lg">
+        <div className="absolute right-3 top-10 z-10 w-40 rounded-md border border-line bg-surface py-1 text-xs shadow-card">
           <Link
             href={`/projets/${projet.id}`}
-            className="block px-3 py-1.5 hover:bg-line/40"
+            className="block px-3 py-1.5 hover:bg-line/60"
             onClick={() => setMenuOpen(false)}
           >
             Modifier
@@ -146,7 +119,7 @@ export function ProjetCard({ projet }: { projet: Projet }) {
               e.stopPropagation();
               setMoveOpen((v) => !v);
             }}
-            className="block w-full px-3 py-1.5 text-left hover:bg-line/40"
+            className="block w-full px-3 py-1.5 text-left hover:bg-line/60"
           >
             Déplacer vers…
           </button>
@@ -160,7 +133,7 @@ export function ProjetCard({ projet }: { projet: Projet }) {
                     e.stopPropagation();
                     move(s);
                   }}
-                  className="block w-full px-3 py-1.5 text-left text-muted hover:bg-line/40"
+                  className="block w-full px-3 py-1.5 text-left text-muted hover:bg-line/60"
                 >
                   {STADE_PROJET_LABELS[s]}
                 </button>
@@ -173,7 +146,7 @@ export function ProjetCard({ projet }: { projet: Projet }) {
               e.stopPropagation();
               remove();
             }}
-            className="block w-full px-3 py-1.5 text-left text-accent hover:bg-line/40"
+            className="block w-full px-3 py-1.5 text-left text-accent hover:bg-line/60"
           >
             Supprimer
           </button>

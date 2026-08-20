@@ -7,6 +7,7 @@ const config: Config = {
     extend: {
       colors: {
         bg: 'rgb(var(--matn-bg) / <alpha-value>)',
+        surface: 'rgb(var(--matn-surface) / <alpha-value>)',
         fg: 'rgb(var(--matn-fg) / <alpha-value>)',
         muted: 'rgb(var(--matn-muted) / <alpha-value>)',
         line: 'rgb(var(--matn-line) / <alpha-value>)',
@@ -19,11 +20,15 @@ const config: Config = {
       },
       borderRadius: {
         none: '0px',
-        DEFAULT: '0px',
-        sm: '2px',
-        md: '2px',
-        lg: '3px',
+        DEFAULT: '10px',
+        sm: '6px',
+        md: '10px',
+        lg: '14px',
+        xl: '20px',
         full: '9999px',
+      },
+      boxShadow: {
+        card: '0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -8px rgb(0 0 0 / 0.5)',
       },
       transitionDuration: {
         fast: '120ms',

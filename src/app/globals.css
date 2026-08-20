@@ -3,19 +3,20 @@
 @tailwind utilities;
 
 html {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 :root {
-  /* Palette claire — off-white chaud / quasi-noir, d'après la référence visuelle. */
-  --matn-bg: 245 243 239;
-  --matn-fg: 12 12 11;
-  --matn-muted: 107 104 98;
-  --matn-line: 214 210 202;
-  /* Lignes structurelles primaires : quasi-noires, comme sur la référence — ce sont les
-     divisions majeures de la grille, pas des séparateurs de lignes de tableau. */
-  --matn-line-strong: 26 26 24;
-  --matn-accent: 232 98 44;
+  /* Pivot visuel complet (déc. utilisateur) : thème sombre dense, cartes arrondies avec surface
+     distincte du fond, accent MATN conservé pour la continuité de marque. Remplace l'ancienne
+     palette claire / grille 0px-radius. */
+  --matn-bg: 10 10 11;
+  --matn-surface: 22 22 24;
+  --matn-fg: 245 245 246;
+  --matn-muted: 145 145 150;
+  --matn-line: 40 40 44;
+  --matn-line-strong: 58 58 63;
+  --matn-accent: 237 111 53;
 }
 
 body {
