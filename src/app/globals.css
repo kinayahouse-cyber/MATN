@@ -42,3 +42,30 @@ input[type='checkbox'] {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Auto-grow d'un textarea en CSS pur (pas de lecture de scrollHeight côté JS) : le textarea et un
+   pseudo-élément miroir du texte partagent la même cellule de grille, donc c'est le moteur de
+   layout du navigateur qui dimensionne le conteneur — aucun reflow forcé synchrone à chaque
+   frappe. Référence : BriefEditor. */
+.grow-wrap {
+  display: grid;
+}
+.grow-wrap::after {
+  content: attr(data-replicated-value) ' ';
+  white-space: pre-wrap;
+  visibility: hidden;
+}
+.grow-wrap > textarea {
+  resize: none;
+  overflow: hidden;
+}
+.grow-wrap > textarea,
+.grow-wrap::after {
+  grid-area: 1 / 1 / 2 / 2;
+  font: inherit;
+  padding: inherit;
+  border: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
