@@ -102,3 +102,14 @@ export const ETAT_PROSPECTION_TONE: Record<string, 'slate' | 'sky' | 'violet' | 
   DORMANT: 'slate',
   PERDU: 'rose',
 };
+
+// Couleur par stade de production Label : cycle propre (coexiste avec StadeProjet, ADR-008),
+// mis en avant sur le Project Workspace Label plutôt que noyé dans un onglet — voir
+// ProjectInfoCard.
+export const STADE_PRODUCTION_LABEL_TONE: Record<string, 'slate' | 'sky' | 'accent' | 'emerald' | 'neutral'> = {
+  DEVELOPPEMENT: 'slate',
+  PREPROD: 'sky',
+  PROD: 'accent',
+  DISTRIBUTION: 'emerald',
+  ARCHIVE: 'neutral',
+};

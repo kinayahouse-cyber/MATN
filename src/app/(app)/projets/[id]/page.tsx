@@ -29,7 +29,6 @@ import { DeleteButton } from '@/components/DeleteButton';
 import { AddDepenseRow } from '@/components/AddDepenseRow';
 import { AddProjetContact } from '@/components/AddProjetContact';
 import { TacheList } from '@/components/TacheList';
-import { SectionTitle, Eyebrow } from '@/components/SectionTitle';
 import { ProjectInfoCard } from '@/components/ProjectInfoCard';
 import { BriefEditor } from '@/components/BriefEditor';
 import type { BriefBlock } from '../actions';
@@ -279,41 +278,6 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
             </ul>
           )}
           <AddProjetContact projetId={projet.id} contacts={availableContacts} />
-
-          {/* Champs propres au track LABEL (ADR-008) */}
-          {projet.track === 'LABEL' && (
-            <div className="mt-10">
-              <SectionTitle size="sm">Label</SectionTitle>
-              <div className="mt-6 grid grid-cols-1 gap-6">
-                <div>
-                  <Eyebrow>Stade production</Eyebrow>
-                  <EditableField
-                    value={projet.stadeLabel ?? ''}
-                    onSave={updateProjetField.bind(null, projet.id, 'stadeLabel')}
-                    type="select"
-                    options={stadeLabelOptions}
-                    className="mt-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <Eyebrow>Format</Eyebrow>
-                  <EditableField
-                    value={projet.format ?? ''}
-                    onSave={updateProjetField.bind(null, projet.id, 'format')}
-                    className="mt-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <Eyebrow>Statut diffusion</Eyebrow>
-                  <EditableField
-                    value={projet.statutDiffusion ?? ''}
-                    onSave={updateProjetField.bind(null, projet.id, 'statutDiffusion')}
-                    className="mt-2 text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       ),
     },
@@ -483,6 +447,10 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
             echeanceLate={echeance.late}
             engagementOptions={engagementOptions}
             onSaveEngagement={updateProjetField.bind(null, projet.id, 'engagement')}
+            stadeLabelOptions={stadeLabelOptions}
+            onSaveStadeLabel={updateProjetField.bind(null, projet.id, 'stadeLabel')}
+            onSaveFormat={updateProjetField.bind(null, projet.id, 'format')}
+            onSaveStatutDiffusion={updateProjetField.bind(null, projet.id, 'statutDiffusion')}
           />
 
           <section className="mt-6 rounded-lg border border-line bg-surface p-5 shadow-card">

@@ -2,8 +2,9 @@ import Link from 'next/link';
 import { EditableField } from '@/components/EditableField';
 import { Card } from '@/components/ui/Card';
 import { Tag } from '@/components/ui/Tag';
+import { TagSelect } from '@/components/ui/TagSelect';
 import { StadeTag } from '@/components/properties/StadeTag';
-import { TRACK_LABELS } from '@/lib/labels';
+import { TRACK_LABELS, TRACK_TONE, STADE_PRODUCTION_LABEL_TONE } from '@/lib/labels';
 
 type Projet = {
   id: string;
@@ -14,11 +15,20 @@ type Projet = {
   description: string | null;
   engagement: string | null;
   organisation: { id: string; nom: string } | null;
+  stadeLabel: string | null;
+  format: string | null;
+  statutDiffusion: string | null;
 };
 
 // Bloc unique d'identité : fil d'Ariane, titre, tags (track/stade) et description fusionnés —
 // remplace l'ancien header séparé + l'onglet Overview. Occupe le côté gauche du bandeau du haut,
 // à côté de la carte Finances.
+//
+// Track=LABEL a un second cycle (stadeLabel : Développement→Preprod→Prod→Distribution→Archive,
+// ADR-008) qui coexiste avec le cycle commercial (stade) sans le recouvrir. Ce cycle production
+// est ce qui compte au quotidien pour un projet Label — il vit ici, visible dès l'ouverture de la
+// page, plutôt que noyé dans l'onglet Contacts où il atterrissait jusqu'ici sans rapport avec le
+// contenu de cet onglet.
 export function ProjectInfoCard({
   projet,
   onSaveName,
@@ -28,6 +38,10 @@ export function ProjectInfoCard({
   echeanceLate,
   engagementOptions,
   onSaveEngagement,
+  stadeLabelOptions,
+  onSaveStadeLabel,
+  onSaveFormat,
+  onSaveStatutDiffusion,
 }: {
   projet: Projet;
   onSaveName: (value: string) => Promise<void>;
@@ -37,6 +51,10 @@ export function ProjectInfoCard({
   echeanceLate: boolean;
   engagementOptions: { value: string; label: string }[];
   onSaveEngagement: (value: string) => Promise<void>;
+  stadeLabelOptions: { value: string; label: string }[];
+  onSaveStadeLabel: (value: string) => Promise<void>;
+  onSaveFormat: (value: string) => Promise<void>;
+  onSaveStatutDiffusion: (value: string) => Promise<void>;
 }) {
   return (
     <Card padded={false} className="h-full p-8">
@@ -65,8 +83,19 @@ export function ProjectInfoCard({
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
-        {projet.track && <Tag>{TRACK_LABELS[projet.track]}</Tag>}
+        {projet.track && (
+          <Tag tone={TRACK_TONE[projet.track] ?? 'neutral'}>{TRACK_LABELS[projet.track]}</Tag>
+        )}
         <StadeTag value={projet.stade} onSave={onSaveStade} />
+        {projet.track === 'LABEL' && (
+          <TagSelect
+            value={projet.stadeLabel ?? 'DEVELOPPEMENT'}
+            options={stadeLabelOptions}
+            onSave={onSaveStadeLabel}
+            tone={STADE_PRODUCTION_LABEL_TONE[projet.stadeLabel ?? 'DEVELOPPEMENT'] ?? 'neutral'}
+            ariaLabel="Stade de production Label"
+          />
+        )}
         <span className={`text-[11px] ${echeanceLate ? 'text-accent' : 'text-muted'}`}>
           {echeanceLabel}
         </span>
@@ -80,15 +109,34 @@ export function ProjectInfoCard({
         className="mt-5 text-sm leading-relaxed text-fg"
       />
 
-      <div className="mt-5 flex items-center gap-2 text-xs text-muted">
-        <span className="uppercase tracking-wide">Type d&rsquo;engagement</span>
-        <EditableField
-          value={projet.engagement ?? ''}
-          onSave={onSaveEngagement}
-          type="select"
-          options={engagementOptions}
-          className="text-fg"
-        />
+      <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted">
+        <span className="flex items-center gap-2">
+          <span className="uppercase tracking-wide">Type d&rsquo;engagement</span>
+          <EditableField
+            value={projet.engagement ?? ''}
+            onSave={onSaveEngagement}
+            type="select"
+            options={engagementOptions}
+            className="text-fg"
+          />
+        </span>
+
+        {projet.track === 'LABEL' && (
+          <>
+            <span className="flex items-center gap-2">
+              <span className="uppercase tracking-wide">Format</span>
+              <EditableField value={projet.format ?? ''} onSave={onSaveFormat} className="text-fg" />
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="uppercase tracking-wide">Diffusion</span>
+              <EditableField
+                value={projet.statutDiffusion ?? ''}
+                onSave={onSaveStatutDiffusion}
+                className="text-fg"
+              />
+            </span>
+          </>
+        )}
       </div>
     </Card>
   );
