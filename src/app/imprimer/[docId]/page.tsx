@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth/current-user';
 import { computeTotaux } from '@/lib/facturation';
 import { nombreEnLettres } from '@/lib/nombre-en-lettres';
 import { getOrCreateAgenceInfo } from '@/lib/agence-info';
+import { resolveFileUrl } from '@/lib/supabase/admin';
 import { DocumentImprimable } from '@/components/DocumentImprimable';
 import '../print.css';
 
@@ -27,6 +28,7 @@ export default async function ImprimerPage({ params }: { params: Promise<{ docId
   if (!document || (document.type !== 'DEVIS' && document.type !== 'FACTURE')) notFound();
 
   const agence = await getOrCreateAgenceInfo();
+  const logoUrl = await resolveFileUrl(agence.logoUrl);
 
   const lignes = document.lignes.map((l) => ({
     id: l.id,
@@ -45,6 +47,7 @@ export default async function ImprimerPage({ params }: { params: Promise<{ docId
     <DocumentImprimable
       type={document.type}
       numero={document.numero}
+      objet={document.objet}
       date={document.createdAt}
       projetNom={document.projet?.nom ?? ''}
       client={
@@ -54,6 +57,7 @@ export default async function ImprimerPage({ params }: { params: Promise<{ docId
       }
       agence={{
         nom: agence.nom,
+        logoUrl,
         adresse: agence.adresse,
         email: agence.email,
         telephone: agence.telephone,

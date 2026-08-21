@@ -75,7 +75,7 @@ export async function addDocument(formData: FormData) {
   redirect(`/projets/${projetId}`);
 }
 
-const DOCUMENT_EDITABLE_FIELDS = ['type', 'numero', 'statut', 'url', 'tauxTva', 'remisePct'] as const;
+const DOCUMENT_EDITABLE_FIELDS = ['type', 'numero', 'objet', 'statut', 'url', 'tauxTva', 'remisePct'] as const;
 type DocumentField = (typeof DOCUMENT_EDITABLE_FIELDS)[number];
 const DOCUMENT_REQUIRED_FIELDS = new Set(['type', 'statut']);
 const DOCUMENT_DECIMAL_FIELDS = new Set(['tauxTva', 'remisePct']);

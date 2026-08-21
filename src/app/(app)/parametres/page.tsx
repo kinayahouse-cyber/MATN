@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth/current-user';
 import { getOrCreateAgenceInfo } from '@/lib/agence-info';
-import { updateAgenceInfoField } from './actions';
+import { resolveFileUrl } from '@/lib/supabase/admin';
+import { updateAgenceInfoField, updateAgenceLogo } from './actions';
 import { EditableField } from '@/components/EditableField';
 import { FieldRow } from '@/components/properties/FieldRow';
 import { StructuralLine } from '@/components/grid/StructuralLine';
@@ -12,6 +13,7 @@ export const dynamic = 'force-dynamic';
 export default async function ParametresPage() {
   await requireAdmin();
   const agence = await getOrCreateAgenceInfo();
+  const logoUrl = await resolveFileUrl(agence.logoUrl);
 
   return (
     <div className="max-w-xl">
@@ -23,10 +25,33 @@ export default async function ParametresPage() {
       <StructuralLine weight="primary" className="mt-6" />
 
       <section className="mt-4">
+        <p className="text-[11px] uppercase tracking-[0.08em] text-muted">Logo</p>
+        <p className="mt-1 text-xs text-muted">Affiché en grand en pied de chaque document imprimé.</p>
+        <div className="mt-3 flex items-center gap-4">
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt="Logo Kinaya" className="h-16 w-auto object-contain" />
+          ) : (
+            <span className="text-xs text-muted">Aucun logo</span>
+          )}
+          <form action={updateAgenceLogo} className="flex items-center gap-2">
+            <input type="hidden" name="id" value={agence.id} />
+            <input type="file" name="file" accept="image/*" required className="text-xs text-muted" />
+            <button type="submit" className="text-xs text-accent hover:underline">
+              {logoUrl ? 'Remplacer' : 'Téléverser'}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section className="mt-6">
         <p className="text-[11px] uppercase tracking-[0.08em] text-muted">Identité</p>
         <div className="mt-2 divide-y divide-line">
-          <FieldRow label="Nom">
-            <EditableField value={agence.nom} onSave={updateAgenceInfoField.bind(null, agence.id, 'nom')} />
+          <FieldRow label="Dénomination sociale">
+            <EditableField
+              value={agence.nom ?? ''}
+              onSave={updateAgenceInfoField.bind(null, agence.id, 'nom')}
+            />
           </FieldRow>
           <FieldRow label="Adresse">
             <EditableField

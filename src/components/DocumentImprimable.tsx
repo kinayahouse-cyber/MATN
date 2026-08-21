@@ -6,7 +6,8 @@
 // bg-bg/text-fg/border-line habituelles, qui retombent ici sur du blanc/noir.
 
 type AgenceInfo = {
-  nom: string;
+  nom: string | null;
+  logoUrl: string | null;
   adresse: string | null;
   email: string | null;
   telephone: string | null;
@@ -42,6 +43,7 @@ function formatDate(d: Date) {
 export function DocumentImprimable({
   type,
   numero,
+  objet,
   date,
   projetNom,
   client,
@@ -54,6 +56,7 @@ export function DocumentImprimable({
 }: {
   type: 'DEVIS' | 'FACTURE';
   numero: string | null;
+  objet: string | null;
   date: Date;
   projetNom: string;
   client: ClientInfo;
@@ -67,7 +70,7 @@ export function DocumentImprimable({
   const label = type === 'FACTURE' ? 'Facture' : 'Devis';
 
   return (
-    <div className="imprimable min-h-screen bg-bg text-fg">
+    <div className="imprimable min-h-screen bg-bg py-10 text-fg print:min-h-0 print:bg-bg print:py-0">
       <button
         type="button"
         onClick={() => window.print()}
@@ -76,18 +79,26 @@ export function DocumentImprimable({
         Imprimer
       </button>
 
-      <div className="mx-auto max-w-2xl px-10 py-14">
+      {/* Format A4 fixe à l'écran (mêmes proportions que @page dans print.css) : ce qu'on voit à
+          l'écran est déjà la mise en page réelle imprimée, pas une approximation. */}
+      <div className="mx-auto flex min-h-[297mm] w-[210mm] max-w-full flex-col bg-bg p-[15mm] shadow-[0_0_0_1px_rgb(var(--matn-line)/0.15),0_8px_30px_-8px_rgb(0_0_0/0.25)] print:m-0 print:min-h-0 print:w-auto print:p-0 print:shadow-none">
         {/* En-tête */}
         <div className="flex items-start justify-between">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-fg">{agence.nom}</h1>
-          <div className="text-right">
+          <div>
             <p className="text-xs uppercase tracking-[0.15em] text-muted">{label}</p>
             <p className="mt-0.5 font-display text-lg tracking-tight text-fg">{numero || '—'}</p>
-            <p className="mt-0.5 text-xs text-muted">{formatDate(date)}</p>
           </div>
+          <p className="text-xs text-muted">{formatDate(date)}</p>
         </div>
 
         <div className="mt-1 h-px w-full bg-line-strong" />
+
+        {objet && (
+          <div className="mt-4">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-muted">Objet</p>
+            <p className="mt-1 text-sm text-fg">{objet}</p>
+          </div>
+        )}
 
         {/* Client / Prestataire */}
         <div className="mt-8 grid grid-cols-2 gap-8">
@@ -101,7 +112,7 @@ export function DocumentImprimable({
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-[0.15em] text-muted">Prestataire</p>
-            <p className="mt-1.5 text-sm font-medium text-fg">{agence.nom}</p>
+            {agence.nom && <p className="mt-1.5 text-sm font-medium text-fg">{agence.nom}</p>}
             {agence.adresse && <p className="text-xs text-muted">{agence.adresse}</p>}
             {agence.nif && <p className="text-xs text-muted">NIF {agence.nif}</p>}
             {agence.nis && <p className="text-xs text-muted">NIS {agence.nis}</p>}
@@ -136,23 +147,23 @@ export function DocumentImprimable({
           </tbody>
         </table>
 
-        {/* Totaux */}
-        <div className="ml-auto mt-4 w-64 space-y-1.5">
-          <div className="flex items-center justify-between text-sm text-muted">
+        {/* Totaux — Total TTC volontairement dominant : c'est le chiffre que le client retient. */}
+        <div className="ml-auto mt-6 w-80 space-y-2">
+          <div className="flex items-center justify-between text-base text-muted">
             <span>Sous-total HT</span>
             <span className="tabular-nums">{formatDZD(totaux.ht)}</span>
           </div>
           {!!remisePct && (
-            <div className="flex items-center justify-between text-sm text-muted">
+            <div className="flex items-center justify-between text-base text-muted">
               <span>Réduction ({remisePct}%)</span>
               <span className="tabular-nums">− {formatDZD(totaux.remise)}</span>
             </div>
           )}
-          <div className="flex items-center justify-between text-sm text-muted">
+          <div className="flex items-center justify-between text-base text-muted">
             <span>TVA ({tauxTva ?? 0}%)</span>
             <span className="tabular-nums">{formatDZD(totaux.tva)}</span>
           </div>
-          <div className="flex items-center justify-between border-t border-line-strong pt-1.5 text-base font-medium text-fg">
+          <div className="flex items-center justify-between border-t border-line-strong pt-3 font-display text-3xl font-bold tracking-tight text-fg">
             <span>Total TTC</span>
             <span className="tabular-nums">{formatDZD(totaux.ttc)}</span>
           </div>
@@ -183,12 +194,18 @@ export function DocumentImprimable({
           </div>
         )}
 
-        {/* Pied */}
-        {(agence.email || agence.telephone) && (
-          <p className="mt-12 text-center text-[11px] text-muted">
-            {[agence.email, agence.telephone].filter(Boolean).join(' · ')}
-          </p>
-        )}
+        {/* Logo en grand + contact, poussés en pied de page (mt-auto dans le conteneur flex-col). */}
+        <div className="mt-auto pt-12 text-center">
+          {agence.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={agence.logoUrl} alt={agence.nom ?? 'Logo'} className="mx-auto h-24 w-auto object-contain" />
+          )}
+          {(agence.email || agence.telephone) && (
+            <p className="mt-3 text-[11px] text-muted">
+              {[agence.email, agence.telephone].filter(Boolean).join(' · ')}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -93,6 +93,17 @@ export default async function DocumentFinancierPage({
         </Link>
       </div>
 
+      <div className="mt-4">
+        <p className="text-[10px] uppercase tracking-[0.15em] text-muted">Objet</p>
+        <EditableField
+          value={document.objet ?? ''}
+          onSave={updateDocumentField.bind(null, document.id, 'objet')}
+          type="textarea"
+          placeholder={`Description globale de l'objet ${article === 'la' ? 'de la' : 'du'} ${label.toLowerCase()}…`}
+          className="mt-1 text-sm"
+        />
+      </div>
+
       <Card padded={false} className="mt-6 p-5">
         <table className="w-full table-fixed text-left text-sm">
           <thead>
