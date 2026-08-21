@@ -98,6 +98,94 @@ export async function deleteDocument(id: string) {
   if (document.projetId) revalidatePath(`/projets/${document.projetId}`);
 }
 
+// ---------------------------------------------------------------------------
+// Devis — Document de type DEVIS + ses LigneDocument (déjà prévues par le schéma, jamais
+// exposées côté UI jusqu'ici : addDocument ne fait qu'attacher un fichier/lien, sans lignes
+// chiffrées). Réservé à ADMIN, comme le reste du financier.
+// ---------------------------------------------------------------------------
+
+export async function createDevis(formData: FormData) {
+  await requireAdmin();
+  const projetId = String(formData.get('projetId') ?? '').trim();
+  if (!projetId) throw new Error('Projet requis');
+
+  const devis = await prisma.document.create({
+    data: { projetId, type: 'DEVIS', statut: 'BROUILLON' },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+  redirect(`/projets/${projetId}/devis/${devis.id}`);
+}
+
+export async function addLigneDocument(documentId: string, libelle: string, quantite: string, prixUnitaire: string) {
+  await requireAdmin();
+  const trimmedLibelle = libelle.trim();
+  const parsedQuantite = quantite.trim() ? Number(quantite) : 1;
+  const parsedPrix = Number(prixUnitaire);
+  if (!trimmedLibelle || !prixUnitaire.trim() || Number.isNaN(parsedPrix) || Number.isNaN(parsedQuantite)) {
+    throw new Error('Champs requis manquants');
+  }
+
+  const count = await prisma.ligneDocument.count({ where: { documentId } });
+
+  const ligne = await prisma.ligneDocument.create({
+    data: {
+      documentId,
+      libelle: trimmedLibelle,
+      quantite: parsedQuantite,
+      prixUnitaire: parsedPrix,
+      ordre: count,
+    },
+  });
+
+  const document = await prisma.document.findUnique({ where: { id: documentId } });
+  if (document?.projetId) revalidatePath(`/projets/${document.projetId}/devis/${documentId}`);
+  return ligne.id;
+}
+
+const LIGNE_DOCUMENT_EDITABLE_FIELDS = ['libelle', 'quantite', 'prixUnitaire'] as const;
+type LigneDocumentField = (typeof LIGNE_DOCUMENT_EDITABLE_FIELDS)[number];
+const LIGNE_DOCUMENT_DECIMAL_FIELDS = new Set(['quantite', 'prixUnitaire']);
+
+export async function updateLigneDocumentField(id: string, field: LigneDocumentField, value: string) {
+  await requireAdmin();
+  if (!LIGNE_DOCUMENT_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
+
+  const trimmed = value.trim();
+  if (!trimmed) throw new Error('Champ requis');
+
+  const parsed: string | number = LIGNE_DOCUMENT_DECIMAL_FIELDS.has(field) ? Number(trimmed) : trimmed;
+  if (LIGNE_DOCUMENT_DECIMAL_FIELDS.has(field) && Number.isNaN(parsed)) throw new Error('Valeur invalide');
+
+  const ligne = await prisma.ligneDocument.update({
+    where: { id },
+    data: { [field]: parsed } as Prisma.LigneDocumentUpdateInput,
+    include: { document: { select: { projetId: true } } },
+  });
+
+  if (ligne.document.projetId) revalidatePath(`/projets/${ligne.document.projetId}/devis/${ligne.documentId}`);
+}
+
+export async function deleteLigneDocument(id: string) {
+  await requireAdmin();
+  const ligne = await prisma.ligneDocument.delete({
+    where: { id },
+    include: { document: { select: { projetId: true } } },
+  });
+  if (ligne.document.projetId) revalidatePath(`/projets/${ligne.document.projetId}/devis/${ligne.documentId}`);
+}
+
+// Variante de deleteDocument avec redirection : contrairement à la suppression depuis l'onglet
+// Files (on reste sur la page projet), supprimer depuis l'éditeur de devis fait disparaître la
+// page en cours — sans redirect, DeleteButton laisserait l'utilisateur sur une route qui n'existe
+// plus.
+export async function deleteDevis(id: string, projetId: string) {
+  await requireAdmin();
+  await prisma.document.delete({ where: { id } });
+  revalidatePath(`/projets/${projetId}`);
+  redirect(`/projets/${projetId}`);
+}
+
 export async function addAsset(formData: FormData) {
   const projetId = String(formData.get('projetId') ?? '').trim();
   const type = String(formData.get('type') ?? '').trim() as TypeAsset;

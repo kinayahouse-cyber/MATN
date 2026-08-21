@@ -79,6 +79,16 @@ export const STATUT_DOCUMENT_LABELS: Record<string, string> = {
   REFUSE: 'Refusé',
 };
 
+// Cycle de vie d'un Document (devis notamment) : brouillon → validé/envoyé → signé (terminal
+// positif) ou refusé (terminal négatif).
+export const STATUT_DOCUMENT_TONE: Record<string, 'slate' | 'sky' | 'amber' | 'emerald' | 'rose'> = {
+  BROUILLON: 'slate',
+  VALIDE: 'sky',
+  ENVOYE: 'amber',
+  SIGNE: 'emerald',
+  REFUSE: 'rose',
+};
+
 export const CATEGORIE_FOURNISSEUR_LABELS: Record<string, string> = {
   CINEMA: 'Cinéma',
   MOTION: 'Motion',

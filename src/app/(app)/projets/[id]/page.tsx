@@ -12,6 +12,7 @@ import {
   addDocument,
   updateDocumentField,
   deleteDocument,
+  createDevis,
   addAsset,
   updateAssetField,
   deleteAsset,
@@ -256,6 +257,14 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                           Ouvrir
                         </a>
                       )}
+                      {canManage && doc.type === 'DEVIS' && (
+                        <Link
+                          href={`/projets/${projet.id}/devis/${doc.id}`}
+                          className="text-xs text-accent hover:underline"
+                        >
+                          Éditer les lignes →
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </li>
@@ -263,7 +272,16 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
             </ul>
           )}
 
-          <details className="mt-6">
+          {canManage && (
+            <form action={createDevis} className="mt-6">
+              <input type="hidden" name="projetId" value={projet.id} />
+              <button type="submit" className="text-sm text-muted hover:text-fg">
+                + Nouveau devis
+              </button>
+            </form>
+          )}
+
+          <details className="mt-3">
             <summary className="cursor-pointer text-sm text-muted hover:text-fg">
               + Ajouter un fichier
             </summary>
