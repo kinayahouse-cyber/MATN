@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/auth/current-user';
 import { STATUT_DOCUMENT_LABELS, STATUT_DOCUMENT_TONE } from '@/lib/labels';
 import { updateDocumentField, updateLigneDocumentField, deleteLigneDocument, deleteDevis } from '../../../actions';
 import { resolveFileUrl } from '@/lib/supabase/admin';
+import { computeTotaux } from '@/lib/facturation';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
 import { TagSelect } from '@/components/ui/TagSelect';
@@ -17,11 +18,10 @@ function formatDZD(n: number) {
   return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(n) + ' DZD';
 }
 
-// Éditeur de devis : le Document (numéro/statut/fichier) existait déjà, ses LigneDocument
-// (libellé/quantité/prix unitaire) aussi dans le schéma — mais rien ne les exposait jusqu'ici,
-// addDocument ne fait qu'attacher un fichier ou un lien. Ici, les lignes se saisissent et le
-// total se calcule, comme les Dépenses d'un projet.
-export default async function DevisPage({
+// Éditeur commun devis/facture : mêmes lignes chiffrées (LigneDocument), mêmes champs TVA/remise —
+// seul le libellé affiché (« Devis »/« Facture ») change selon document.type. Route sous
+// documents/ (pas devis/) puisqu'elle sert les deux types depuis cette session.
+export default async function DocumentFinancierPage({
   params,
 }: {
   params: Promise<{ id: string; docId: string }>;
@@ -37,10 +37,24 @@ export default async function DevisPage({
     prisma.projet.findUnique({ where: { id }, select: { id: true, nom: true, code: true } }),
   ]);
 
-  if (!document || !projet || document.projetId !== projet.id || document.type !== 'DEVIS') notFound();
+  if (
+    !document ||
+    !projet ||
+    document.projetId !== projet.id ||
+    (document.type !== 'DEVIS' && document.type !== 'FACTURE')
+  ) {
+    notFound();
+  }
 
+  const label = document.type === 'FACTURE' ? 'Facture' : 'Devis';
+  // Accord grammatical : "le devis" (masculin) / "la facture" (féminin).
+  const article = document.type === 'FACTURE' ? 'la' : 'le';
   const resolvedUrl = await resolveFileUrl(document.url);
-  const total = document.lignes.reduce((sum, l) => sum + Number(l.quantite) * Number(l.prixUnitaire), 0);
+  const totaux = computeTotaux(
+    document.lignes.map((l) => ({ quantite: Number(l.quantite), prixUnitaire: Number(l.prixUnitaire) })),
+    document.tauxTva !== null ? Number(document.tauxTva) : null,
+    document.remisePct !== null ? Number(document.remisePct) : null
+  );
 
   return (
     <div className="max-w-3xl">
@@ -49,7 +63,7 @@ export default async function DevisPage({
           {projet.code} — {projet.nom}
         </Link>
         <span aria-hidden>/</span>
-        <span>Devis</span>
+        <span>{label}</span>
       </nav>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -64,15 +78,20 @@ export default async function DevisPage({
           options={statutOptions}
           onSave={updateDocumentField.bind(null, document.id, 'statut')}
           tone={STATUT_DOCUMENT_TONE[document.statut] ?? 'neutral'}
-          ariaLabel="Statut du devis"
+          ariaLabel={`Statut ${article === 'la' ? 'de la' : 'du'} ${label.toLowerCase()}`}
         />
       </div>
 
-      {resolvedUrl && (
-        <a href={resolvedUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-accent hover:underline">
-          Ouvrir le fichier joint
-        </a>
-      )}
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+        {resolvedUrl && (
+          <a href={resolvedUrl} target="_blank" rel="noreferrer" className="text-accent hover:underline">
+            Ouvrir le fichier joint
+          </a>
+        )}
+        <Link href={`/imprimer/${document.id}`} target="_blank" className="text-accent hover:underline">
+          Imprimer / Exporter →
+        </Link>
+      </div>
 
       <Card padded={false} className="mt-6 p-5">
         <table className="w-full table-fixed text-left text-sm">
@@ -121,17 +140,53 @@ export default async function DevisPage({
           </tbody>
         </table>
 
-        <div className="mt-4 flex items-center justify-end gap-3 border-t border-line pt-4">
-          <span className="text-xs uppercase tracking-wide text-muted">Total</span>
-          <span className="font-display text-xl tracking-tight text-fg tabular-nums">{formatDZD(total)}</span>
+        <div className="mt-4 space-y-1.5 border-t border-line pt-4">
+          <div className="flex items-center justify-between text-sm text-muted">
+            <span>Sous-total HT</span>
+            <span className="tabular-nums">{formatDZD(totaux.ht)}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm text-muted">
+            <span className="flex items-center gap-1.5">
+              Réduction
+              <EditableField
+                value={document.remisePct !== null ? String(document.remisePct) : ''}
+                onSave={updateDocumentField.bind(null, document.id, 'remisePct')}
+                type="number"
+                placeholder="0"
+                className="w-14"
+              />
+              %
+            </span>
+            <span className="tabular-nums">− {formatDZD(totaux.remise)}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm text-muted">
+            <span className="flex items-center gap-1.5">
+              TVA
+              <EditableField
+                value={document.tauxTva !== null ? String(document.tauxTva) : ''}
+                onSave={updateDocumentField.bind(null, document.id, 'tauxTva')}
+                type="number"
+                placeholder="0"
+                className="w-14"
+              />
+              %
+            </span>
+            <span className="tabular-nums">{formatDZD(totaux.tva)}</span>
+          </div>
+          <div className="flex items-center justify-end gap-3 pt-1.5">
+            <span className="text-xs uppercase tracking-wide text-muted">Total TTC</span>
+            <span className="font-display text-xl tracking-tight text-fg tabular-nums">
+              {formatDZD(totaux.ttc)}
+            </span>
+          </div>
         </div>
       </Card>
 
       <section className="mt-8">
         <DeleteButton
           action={deleteDevis.bind(null, document.id, projet.id)}
-          confirmMessage="Supprimer ce devis ? Ses lignes seront aussi supprimées."
-          label="Supprimer le devis"
+          confirmMessage={`Supprimer ${article === 'la' ? 'cette' : 'ce'} ${label.toLowerCase()} ? Ses lignes seront aussi supprimées.`}
+          label={`Supprimer ${article} ${label.toLowerCase()}`}
           className="text-xs uppercase tracking-wide text-muted hover:text-accent"
         />
       </section>

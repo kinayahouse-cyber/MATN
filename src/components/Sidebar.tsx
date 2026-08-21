@@ -11,6 +11,7 @@ import {
   IconTasks,
   IconFinance,
   IconKnowledge,
+  IconSettings,
 } from '@/components/icons/nav';
 import type { Role } from '@prisma/client';
 
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: '/taches', label: 'Tâches', Icon: IconTasks, adminOnly: false },
   { href: '/finance', label: 'Finance', Icon: IconFinance, adminOnly: true },
   { href: '/knowledge-hub', label: 'Knowledge Hub', Icon: IconKnowledge, adminOnly: true },
+  { href: '/parametres', label: 'Paramètres', Icon: IconSettings, adminOnly: true },
 ];
 
 export function Sidebar({ role }: { role: Role }) {

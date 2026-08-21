@@ -13,6 +13,7 @@ import {
   updateDocumentField,
   deleteDocument,
   createDevis,
+  createFacture,
   addAsset,
   updateAssetField,
   deleteAsset,
@@ -257,9 +258,9 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
                           Ouvrir
                         </a>
                       )}
-                      {canManage && doc.type === 'DEVIS' && (
+                      {canManage && (doc.type === 'DEVIS' || doc.type === 'FACTURE') && (
                         <Link
-                          href={`/projets/${projet.id}/devis/${doc.id}`}
+                          href={`/projets/${projet.id}/documents/${doc.id}`}
                           className="text-xs text-accent hover:underline"
                         >
                           Éditer les lignes →
@@ -273,12 +274,20 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
           )}
 
           {canManage && (
-            <form action={createDevis} className="mt-6">
-              <input type="hidden" name="projetId" value={projet.id} />
-              <button type="submit" className="text-sm text-muted hover:text-fg">
-                + Nouveau devis
-              </button>
-            </form>
+            <div className="mt-6 flex items-center gap-4">
+              <form action={createDevis}>
+                <input type="hidden" name="projetId" value={projet.id} />
+                <button type="submit" className="text-sm text-muted hover:text-fg">
+                  + Nouveau devis
+                </button>
+              </form>
+              <form action={createFacture}>
+                <input type="hidden" name="projetId" value={projet.id} />
+                <button type="submit" className="text-sm text-muted hover:text-fg">
+                  + Nouvelle facture
+                </button>
+              </form>
+            </div>
           )}
 
           <details className="mt-3">

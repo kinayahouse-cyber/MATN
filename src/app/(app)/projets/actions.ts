@@ -75,19 +75,29 @@ export async function addDocument(formData: FormData) {
   redirect(`/projets/${projetId}`);
 }
 
-const DOCUMENT_EDITABLE_FIELDS = ['type', 'numero', 'statut', 'url'] as const;
+const DOCUMENT_EDITABLE_FIELDS = ['type', 'numero', 'statut', 'url', 'tauxTva', 'remisePct'] as const;
 type DocumentField = (typeof DOCUMENT_EDITABLE_FIELDS)[number];
 const DOCUMENT_REQUIRED_FIELDS = new Set(['type', 'statut']);
+const DOCUMENT_DECIMAL_FIELDS = new Set(['tauxTva', 'remisePct']);
 
+// Édite aussi tauxTva/remisePct depuis cette session — donnée financière comme le reste des
+// actions Document ci-dessous, d'où le requireAdmin() qui manquait jusqu'ici.
 export async function updateDocumentField(id: string, field: DocumentField, value: string) {
+  await requireAdmin();
   if (!DOCUMENT_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
 
   const trimmed = value.trim();
   if (!trimmed && DOCUMENT_REQUIRED_FIELDS.has(field)) throw new Error('Champ requis');
 
+  let parsed: string | number | null = trimmed || null;
+  if (parsed !== null && DOCUMENT_DECIMAL_FIELDS.has(field)) {
+    parsed = Number(trimmed);
+    if (Number.isNaN(parsed)) throw new Error('Valeur invalide');
+  }
+
   const document = await prisma.document.update({
     where: { id },
-    data: { [field]: trimmed || null } as Prisma.DocumentUpdateInput,
+    data: { [field]: parsed } as Prisma.DocumentUpdateInput,
   });
 
   if (document.projetId) revalidatePath(`/projets/${document.projetId}`);
@@ -99,22 +109,48 @@ export async function deleteDocument(id: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Devis — Document de type DEVIS + ses LigneDocument (déjà prévues par le schéma, jamais
-// exposées côté UI jusqu'ici : addDocument ne fait qu'attacher un fichier/lien, sans lignes
-// chiffrées). Réservé à ADMIN, comme le reste du financier.
+// Devis & Factures — Document de type DEVIS/FACTURE + ses LigneDocument (déjà prévues par le
+// schéma, jamais exposées côté UI jusqu'ici : addDocument ne fait qu'attacher un fichier/lien,
+// sans lignes chiffrées). Réservé à ADMIN, comme le reste du financier.
 // ---------------------------------------------------------------------------
+
+// Numéro suggéré (pas imposé) : DEV-26-004 / FACT-26-004, compté sur les documents du même type
+// créés cette année, tous projets confondus — reste un champ texte libre ensuite (EditableField),
+// l'admin peut le changer sans que rien ne l'en empêche.
+async function suggestNumero(type: 'DEVIS' | 'FACTURE') {
+  const prefix = type === 'DEVIS' ? 'DEV' : 'FACT';
+  const yearShort = String(new Date().getFullYear()).slice(-2);
+  const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+  const count = await prisma.document.count({ where: { type, createdAt: { gte: startOfYear } } });
+  return `${prefix}-${yearShort}-${String(count + 1).padStart(3, '0')}`;
+}
 
 export async function createDevis(formData: FormData) {
   await requireAdmin();
   const projetId = String(formData.get('projetId') ?? '').trim();
   if (!projetId) throw new Error('Projet requis');
 
+  const numero = await suggestNumero('DEVIS');
   const devis = await prisma.document.create({
-    data: { projetId, type: 'DEVIS', statut: 'BROUILLON' },
+    data: { projetId, type: 'DEVIS', statut: 'BROUILLON', numero, tauxTva: 19 },
   });
 
   revalidatePath(`/projets/${projetId}`);
-  redirect(`/projets/${projetId}/devis/${devis.id}`);
+  redirect(`/projets/${projetId}/documents/${devis.id}`);
+}
+
+export async function createFacture(formData: FormData) {
+  await requireAdmin();
+  const projetId = String(formData.get('projetId') ?? '').trim();
+  if (!projetId) throw new Error('Projet requis');
+
+  const numero = await suggestNumero('FACTURE');
+  const facture = await prisma.document.create({
+    data: { projetId, type: 'FACTURE', statut: 'BROUILLON', numero, tauxTva: 19 },
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+  redirect(`/projets/${projetId}/documents/${facture.id}`);
 }
 
 export async function addLigneDocument(documentId: string, libelle: string, quantite: string, prixUnitaire: string) {
@@ -139,7 +175,7 @@ export async function addLigneDocument(documentId: string, libelle: string, quan
   });
 
   const document = await prisma.document.findUnique({ where: { id: documentId } });
-  if (document?.projetId) revalidatePath(`/projets/${document.projetId}/devis/${documentId}`);
+  if (document?.projetId) revalidatePath(`/projets/${document.projetId}/documents/${documentId}`);
   return ligne.id;
 }
 
@@ -163,7 +199,7 @@ export async function updateLigneDocumentField(id: string, field: LigneDocumentF
     include: { document: { select: { projetId: true } } },
   });
 
-  if (ligne.document.projetId) revalidatePath(`/projets/${ligne.document.projetId}/devis/${ligne.documentId}`);
+  if (ligne.document.projetId) revalidatePath(`/projets/${ligne.document.projetId}/documents/${ligne.documentId}`);
 }
 
 export async function deleteLigneDocument(id: string) {
@@ -172,13 +208,14 @@ export async function deleteLigneDocument(id: string) {
     where: { id },
     include: { document: { select: { projetId: true } } },
   });
-  if (ligne.document.projetId) revalidatePath(`/projets/${ligne.document.projetId}/devis/${ligne.documentId}`);
+  if (ligne.document.projetId) revalidatePath(`/projets/${ligne.document.projetId}/documents/${ligne.documentId}`);
 }
 
 // Variante de deleteDocument avec redirection : contrairement à la suppression depuis l'onglet
-// Files (on reste sur la page projet), supprimer depuis l'éditeur de devis fait disparaître la
-// page en cours — sans redirect, DeleteButton laisserait l'utilisateur sur une route qui n'existe
-// plus.
+// Files (on reste sur la page projet), supprimer depuis l'éditeur devis/facture fait disparaître
+// la page en cours — sans redirect, DeleteButton laisserait l'utilisateur sur une route qui
+// n'existe plus. Nom conservé (deleteDevis) même si elle sert aussi aux Factures — pas de raison
+// de renommer un identifiant interne pour ça.
 export async function deleteDevis(id: string, projetId: string) {
   await requireAdmin();
   await prisma.document.delete({ where: { id } });

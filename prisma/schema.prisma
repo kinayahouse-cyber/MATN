@@ -270,6 +270,7 @@ model Projet {
 
 enum TypeDocument {
   DEVIS
+  FACTURE
   CONTRAT
   GUIDELINE
   LIVRABLE
@@ -292,13 +293,18 @@ model Document {
   clientId String?
 
   type   TypeDocument
-  numero String? // requis en pratique pour DEVIS ; optionnel pour les autres types
+  numero String? // requis en pratique pour DEVIS/FACTURE ; optionnel pour les autres types
   statut StatutDocument @default(BROUILLON)
   track  Track? // dénormalisé depuis Projet.track à la création
   url    String? // lien vers le fichier téléchargeable — pas de stockage propre à MATN pour
   // l'instant (pas d'intégration Supabase Storage) : un simple lien externe/partagé
 
-  lignes LigneDocument[] // vide pour les types hors DEVIS
+  // Uniquement renseignés pour DEVIS/FACTURE — pilotent le calcul HT/TVA/TTC (src/lib/facturation.ts)
+  // affiché sur l'éditeur et sur la page d'impression. NULL/0 = exonéré / sans remise.
+  tauxTva   Decimal? @db.Decimal(5, 2)
+  remisePct Decimal? @db.Decimal(5, 2)
+
+  lignes LigneDocument[] // vide pour les types hors DEVIS/FACTURE
 
   versionDe   Document?  @relation("DocumentVersions", fields: [versionDeId], references: [id])
   versionDeId String?
@@ -313,6 +319,29 @@ model Document {
   // à ajouter en SQL brut après `prisma migrate dev` (migration éditée manuellement).
 
   @@map("documents")
+}
+
+// Infos de Kinaya elle-même (le "prestataire" sur les devis/factures imprimés) — ligne unique,
+// jamais pré-remplie avec de vraies données par le code : livrée vide, saisie une fois par
+// l'admin via /parametres après déploiement (src/lib/agence-info.ts).
+model AgenceInfo {
+  id                 String   @id @default(cuid())
+  nom                String   @default("Kinaya")
+  adresse            String?
+  email              String?
+  telephone          String?
+  nif                String?
+  nis                String?
+  rc                 String?
+  ai                 String?
+  banqueNom          String?
+  rib                String?
+  conditionsPaiement String? // texte libre, réutilisé tel quel sur chaque document imprimé
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("agence_info")
 }
 
 model LigneDocument {

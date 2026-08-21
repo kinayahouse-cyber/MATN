@@ -65,6 +65,7 @@ export const ENGAGEMENT_LABELS: Record<string, string> = {
 
 export const TYPE_DOCUMENT_LABELS: Record<string, string> = {
   DEVIS: 'Devis',
+  FACTURE: 'Facture',
   CONTRAT: 'Contrat',
   GUIDELINE: 'Guideline',
   LIVRABLE: 'Livrable',
