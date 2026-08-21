@@ -4,8 +4,10 @@ import {
   TYPE_ORGANISATION_LABELS,
   STADE_PROJET_LABELS,
   ETAT_PROSPECTION_LABELS,
+  SECTEUR_LABELS,
   TRACK_TONE,
   ETAT_PROSPECTION_TONE,
+  SECTEUR_TONE,
 } from '@/lib/labels';
 import { TagSelect } from '@/components/ui/TagSelect';
 import {
@@ -33,6 +35,7 @@ const etatProspectionOptions = Object.entries(ETAT_PROSPECTION_LABELS).map(([val
   value,
   label,
 }));
+const secteurOptions = Object.entries(SECTEUR_LABELS).map(([value, label]) => ({ value, label }));
 
 type Contact = {
   id: string;
@@ -108,11 +111,23 @@ export function ClientDetail({ client }: { client: Client }) {
             options={typeOptions}
           />
           <span aria-hidden>·</span>
-          <EditableField
-            value={client.secteur ?? ''}
-            onSave={updateOrganisationField.bind(null, client.id, 'secteur')}
-            placeholder="Secteur"
-          />
+          {client.secteur ? (
+            <TagSelect
+              value={client.secteur}
+              options={secteurOptions}
+              onSave={updateOrganisationField.bind(null, client.id, 'secteur')}
+              tone={SECTEUR_TONE[client.secteur] ?? 'neutral'}
+              ariaLabel="Secteur"
+            />
+          ) : (
+            <EditableField
+              value=""
+              onSave={updateOrganisationField.bind(null, client.id, 'secteur')}
+              type="select"
+              options={secteurOptions}
+              placeholder="Secteur"
+            />
+          )}
         </div>
       </div>
 

@@ -4,6 +4,41 @@ export const TRACK_LABELS: Record<string, string> = {
   LABEL: 'Label',
 };
 
+export const SECTEUR_LABELS: Record<string, string> = {
+  ARCHITECTURE: 'Architecture',
+  MODE_BEAUTE: 'Mode / Beauté',
+  FOOD_BEVERAGE: 'Food & Beverage',
+  TECH: 'Tech / Startup',
+  COMMUNICATION: 'Communication / Publicité',
+  PRODUCTION: 'Production',
+  CULTURE_EVENEMENTIEL: 'Culture / Événementiel',
+  IMMOBILIER: 'Immobilier',
+  INSTITUTIONNEL: 'Institutionnel / Public',
+  SANTE: 'Santé',
+  EDUCATION: 'Éducation',
+  AUTRE: 'Autre',
+};
+
+// Couleur fixe par secteur — même logique que Track/État de prospection : une catégorie doit se
+// reconnaître d'un coup d'œil, pas dépendre d'une couleur dérivée par hash.
+export const SECTEUR_TONE: Record<
+  string,
+  'sky' | 'fuchsia' | 'amber' | 'violet' | 'emerald' | 'rose' | 'teal' | 'slate'
+> = {
+  ARCHITECTURE: 'slate',
+  MODE_BEAUTE: 'fuchsia',
+  FOOD_BEVERAGE: 'amber',
+  TECH: 'sky',
+  COMMUNICATION: 'violet',
+  PRODUCTION: 'teal',
+  CULTURE_EVENEMENTIEL: 'rose',
+  IMMOBILIER: 'slate',
+  INSTITUTIONNEL: 'slate',
+  SANTE: 'emerald',
+  EDUCATION: 'sky',
+  AUTRE: 'slate',
+};
+
 export const TYPE_ORGANISATION_LABELS: Record<string, string> = {
   CLIENT_DIRECT: 'Client direct',
   AGENCE: 'Agence',
@@ -56,7 +91,21 @@ export const CATEGORIE_FOURNISSEUR_LABELS: Record<string, string> = {
 export const STATUT_TACHE_LABELS: Record<string, string> = {
   A_FAIRE: 'À faire',
   EN_COURS: 'En cours',
+  EN_PAUSE: 'En pause',
   FAIT: 'Fait',
+};
+
+export const PRIORITE_TACHE_LABELS: Record<string, string> = {
+  HIGH: 'High',
+  CHILL: 'Chill',
+  OSEF: 'Osef',
+};
+
+// Chaud → froid : High retient l'oeil, Osef s'efface dans le neutre.
+export const PRIORITE_TACHE_TONE: Record<string, 'rose' | 'amber' | 'slate'> = {
+  HIGH: 'rose',
+  CHILL: 'amber',
+  OSEF: 'slate',
 };
 
 export const STADE_PRODUCTION_LABEL_LABELS: Record<string, string> = {

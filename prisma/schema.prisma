@@ -66,6 +66,23 @@ enum TypeOrganisation {
   PRESCRIPTEUR
 }
 
+// Catégories fixes plutôt que du texte libre — le secteur doit pouvoir être filtré/groupé sans
+// que chaque saisie invente sa propre formulation ("Café de spécialité" vs "F&B" vs "Food").
+enum SecteurClient {
+  ARCHITECTURE
+  MODE_BEAUTE
+  FOOD_BEVERAGE
+  TECH
+  COMMUNICATION
+  PRODUCTION
+  CULTURE_EVENEMENTIEL
+  IMMOBILIER
+  INSTITUTIONNEL
+  SANTE
+  EDUCATION
+  AUTRE
+}
+
 // Pipeline de prospection d'un Client, du premier contact au compte perdu/dormant.
 enum EtatProspection {
   A_CONTACTER
@@ -81,7 +98,7 @@ model Organisation {
   id      String           @id @default(cuid())
   nom     String
   type    TypeOrganisation @default(CLIENT_DIRECT)
-  secteur String?
+  secteur SecteurClient?
 
   // Track dominant du Client (Business Ontology §2). Nullable : NULL transitoire tant que les
   // anomalies de backfill (Organisations à Track multiple, ADR-007 pt.7) ne sont pas résolues
@@ -436,7 +453,15 @@ model Fournisseur {
 enum StatutTache {
   A_FAIRE
   EN_COURS
+  EN_PAUSE
   FAIT
+}
+
+// Priorité informelle plutôt qu'un P0-P3 : reflète le vocabulaire réel de l'équipe.
+enum PrioriteTache {
+  HIGH
+  CHILL
+  OSEF
 }
 
 model Tache {
@@ -449,7 +474,8 @@ model Tache {
 
   libelle     String
   description String?
-  statut      StatutTache @default(A_FAIRE)
+  statut      StatutTache   @default(A_FAIRE)
+  priorite    PrioriteTache @default(CHILL)
   // `dateDebut` + `echeance` forment la plage affichée par la vue Timeline. Les deux restent
   // optionnelles : une tâche sans date de début est un simple point d'échéance sur la frise.
   dateDebut   DateTime?

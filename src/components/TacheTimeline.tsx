@@ -93,10 +93,25 @@ export function TacheTimeline({
   );
   const { dayWidth, showDay } = ZOOM[zoom];
 
+  const today = useMemo(() => {
+    const [y, m, d] = todayISO.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d));
+  }, [todayISO]);
+
   const userOptions = useMemo(
     () => utilisateurs.map((u) => ({ value: u.id, label: u.nom ?? u.email })),
     [utilisateurs]
   );
+
+  const initialsById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const u of utilisateurs) {
+      const src = (u.nom ?? u.email).trim();
+      const parts = src.split(/\s+/).filter(Boolean);
+      map.set(u.id, (parts.length >= 2 ? parts[0][0] + parts[1][0] : src.slice(0, 2)).toUpperCase());
+    }
+    return map;
+  }, [utilisateurs]);
 
   const dated = useMemo(
     () =>
@@ -121,11 +136,16 @@ export function TacheTimeline({
 
   const days = useMemo(() => {
     if (dated.length === 0) return [];
-    const first = dated.reduce(
+    const firstTask = dated.reduce(
       (min, t) => ((t.debut ?? t.echeance) < min ? (t.debut ?? t.echeance) : min),
       dated[0].debut ?? dated[0].echeance
     );
-    const last = dated.reduce((max, t) => (t.echeance > max ? t.echeance : max), dated[0].echeance);
+    const lastTask = dated.reduce((max, t) => (t.echeance > max ? t.echeance : max), dated[0].echeance);
+    // La frise respire toujours au-delà d'aujourd'hui plutôt que de s'arrêter net à la dernière
+    // tâche connue — au moins 2 semaines avant et un mois après "aujourd'hui", élargi si les
+    // tâches débordent déjà de cette fenêtre.
+    const first = firstTask < addDays(today, -14) ? firstTask : addDays(today, -14);
+    const last = lastTask > addDays(today, 30) ? lastTask : addDays(today, 30);
     // Marge de 6 jours de part et d'autre : au-delà de laisser de l'air visuel, ça donne de la
     // place pour glisser une barre vers l'extérieur de la plage actuelle sans être bloqué au bord.
     const start = addDays(new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), first.getUTCDate())), -6);
@@ -133,7 +153,7 @@ export function TacheTimeline({
     const out: Date[] = [];
     for (let d = start; d.getTime() <= end.getTime(); d = addDays(d, 1)) out.push(d);
     return out;
-  }, [dated]);
+  }, [dated, today]);
 
   const indexOf = useMemo(() => new Map(days.map((d, i) => [key(d), i])), [days]);
 
@@ -248,13 +268,33 @@ export function TacheTimeline({
   }
 
   const timelineWidth = days.length * dayWidth;
+  const todayIdx = indexOf.get(todayISO);
 
   return (
     <div className={pending ? 'opacity-70' : ''}>
       {ZoomSwitch}
 
       <div className="overflow-x-auto rounded-md border border-line">
-        <div style={{ width: timelineWidth }}>
+        <div className="relative" style={{ width: timelineWidth }}>
+          {/* Ligne "Aujourd'hui" : traverse l'en-tête et toutes les lignes en continu — la frise
+              respire toujours au-delà de cette ligne (voir le calcul de `days`) plutôt que de
+              s'arrêter net à la dernière tâche connue. */}
+          {todayIdx !== undefined && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 z-20"
+              style={{ left: todayIdx * dayWidth + dayWidth / 2 }}
+            >
+              <div className="h-full w-px bg-accent" />
+              {/* `top-0` plutôt qu'un décalage négatif : `overflow-x-auto` force `overflow-y` à
+                  `auto` (règle CSS : un axe visible devient auto dès que l'autre l'est), donc tout
+                  élément qui déborderait au-dessus du conteneur serait rogné. */}
+              <span className="absolute top-0.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-bg shadow">
+                Aujourd&rsquo;hui
+              </span>
+            </div>
+          )}
+
           {/* En-tête : mois puis jours */}
           <div className="flex border-b border-line bg-surface">
             {days.map((d, i) => {
@@ -310,20 +350,11 @@ export function TacheTimeline({
               ? `${t.libelle} — ${STATUT_TACHE_LABELS[t.statut] ?? t.statut} — ${key(t.debut)} → ${key(t.echeance)}`
               : `${t.libelle} — ${STATUT_TACHE_LABELS[t.statut] ?? t.statut} — échéance ${key(t.echeance)}`;
 
+            const initials = t.assigneAId ? initialsById.get(t.assigneAId) : undefined;
+
             return (
               <div key={t.id} className="border-b border-line last:border-b-0">
                 <div className="relative py-2.5" style={{ width: timelineWidth, height: '2.25rem' }}>
-                  {/* Fond : surlignage de la colonne du jour courant */}
-                  <div className="absolute inset-0 flex" aria-hidden>
-                    {days.map((d) => (
-                      <div
-                        key={key(d)}
-                        style={{ width: dayWidth }}
-                        className={`shrink-0 ${key(d) === todayISO ? 'bg-accent/10' : ''}`}
-                      />
-                    ))}
-                  </div>
-
                   <div
                     title={label}
                     onPointerDown={(e) => beginDrag(e, t, 'move')}
@@ -349,6 +380,20 @@ export function TacheTimeline({
                       aria-hidden
                     />
                   </div>
+
+                  {/* Avatar (initiales) à cheval sur le bord gauche de la barre — référence : les
+                      cercles de portrait des maquettes fournies. Pas de photo dans nos données,
+                      donc initiales sur fond neutre plutôt qu'un espace vide. */}
+                  {initials && (
+                    <div
+                      aria-hidden
+                      title={userOptions.find((o) => o.value === t.assigneAId)?.label}
+                      className="pointer-events-none absolute top-1/2 z-20 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border-2 border-bg bg-line-strong text-[9px] font-semibold text-fg"
+                      style={{ left: barLeft - 8 }}
+                    >
+                      {initials}
+                    </div>
+                  )}
 
                   {!fitsInside && (
                     <span

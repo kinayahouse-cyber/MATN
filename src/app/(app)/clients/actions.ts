@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import type { TypeOrganisation, Track, CanalContact, Registre, Prisma } from '@prisma/client';
+import type { TypeOrganisation, Track, SecteurClient, CanalContact, Registre, Prisma } from '@prisma/client';
 
 export async function createClient(formData: FormData) {
   const nom = String(formData.get('nom') ?? '').trim();
@@ -11,14 +11,14 @@ export async function createClient(formData: FormData) {
 
   const type = String(formData.get('type') ?? 'CLIENT_DIRECT') as TypeOrganisation;
   const trackRaw = String(formData.get('track') ?? '');
-  const secteur = String(formData.get('secteur') ?? '').trim() || null;
+  const secteurRaw = String(formData.get('secteur') ?? '');
 
   const client = await prisma.organisation.create({
     data: {
       nom,
       type,
       track: trackRaw ? (trackRaw as Track) : null,
-      secteur,
+      secteur: secteurRaw ? (secteurRaw as SecteurClient) : null,
     },
   });
 

@@ -2,6 +2,10 @@
 //  - StatTile   : tuile « label / grand nombre / légende » (dashboard Gross Sales)
 //  - SegmentBar : barre de proportion à deux segments étiquetés (COFFEE 37% / 63% MILK)
 //  - TickBar    : progression en barrettes verticales (« Extended », 71%)
+//  - HeroStat   : tuile inversée (fond clair, "Your Sales Analysis" — la métrique qu'on veut voir
+//                 en premier, distincte des StatTile qui l'entourent)
+//  - BarChart   : histogramme vertical simple ("Sales Funnel")
+//  - HeatGrid   : grille d'intensité ("Order · Base on social media")
 // Aucune ne fabrique de donnée : elles reçoivent des valeurs déjà calculées.
 
 export function StatTile({
@@ -65,6 +69,102 @@ export function SegmentBar({
         <span className="truncate font-mono text-[11px] uppercase tracking-wide text-muted">
           {100 - leftPct}% {rightLabel}
         </span>
+      </div>
+    </div>
+  );
+}
+
+export function HeroStat({
+  label,
+  value,
+  caption,
+}: {
+  label: string;
+  value: React.ReactNode;
+  caption?: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-fg p-5 text-bg">
+      <p className="text-[10px] uppercase tracking-[0.12em] text-bg/60">{label}</p>
+      <div className="mt-2 font-display text-3xl leading-none tracking-tight tabular-nums">{value}</div>
+      {caption && <p className="mt-2 text-[11px] text-bg/60">{caption}</p>}
+    </div>
+  );
+}
+
+export function BarChart({
+  bars,
+  highlightLabel,
+}: {
+  bars: { label: string; value: number }[];
+  /** Label de la barre à mettre en avant (mois en cours, par exemple). */
+  highlightLabel?: string;
+}) {
+  const max = Math.max(1, ...bars.map((b) => b.value));
+  return (
+    <div className="flex h-32 items-end gap-2" aria-hidden>
+      {bars.map((b) => {
+        const isHighlight = b.label === highlightLabel;
+        const heightPct = Math.max(2, Math.round((b.value / max) * 100));
+        return (
+          <div key={b.label} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+            <div
+              title={b.label}
+              className={`w-full rounded-md transition-colors duration-fast ${
+                isHighlight ? 'bg-accent' : 'bg-line'
+              }`}
+              style={{ height: `${heightPct}%` }}
+            />
+            <span className="text-[9px] uppercase tracking-wide text-muted">{b.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function HeatGrid({
+  rows,
+  cols,
+  value,
+}: {
+  rows: string[];
+  cols: string[];
+  /** Intensité 0–1 pour une cellule donnée. */
+  value: (row: string, col: string) => number;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <div className="inline-grid gap-1.5" style={{ gridTemplateColumns: `auto repeat(${cols.length}, 1.5rem)` }}>
+        <div />
+        {cols.map((c) => (
+          <div key={c} className="flex h-16 items-end justify-center pb-1">
+            {/* Colonnes verticales : les libellés de stade sont trop longs pour 1.5rem à
+                l'horizontale sans se chevaucher. */}
+            <span
+              className="whitespace-nowrap text-[9px] uppercase tracking-wide text-muted"
+              style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+            >
+              {c}
+            </span>
+          </div>
+        ))}
+        {rows.map((r) => (
+          <div key={r} className="contents">
+            <div className="flex items-center pr-2 text-[10px] text-muted">{r}</div>
+            {cols.map((c) => {
+              const v = Math.max(0, Math.min(1, value(r, c)));
+              return (
+                <div
+                  key={c}
+                  title={`${r} · ${c} : ${Math.round(v * 100)}%`}
+                  className="h-6 w-6 rounded-[4px]"
+                  style={{ backgroundColor: `rgba(16, 185, 129, ${0.08 + v * 0.72})` }}
+                />
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );

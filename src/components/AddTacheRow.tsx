@@ -40,7 +40,7 @@ export function AddTacheRow({
   if (!open) {
     return (
       <tr>
-        <td colSpan={6} className="py-2">
+        <td colSpan={7} className="py-2">
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -73,6 +73,7 @@ export function AddTacheRow({
         />
       </td>
       <td className="py-1 text-xs text-muted">À faire</td>
+      <td />
       <td className="py-1">
         <input
           type="date"

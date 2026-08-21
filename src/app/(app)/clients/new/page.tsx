@@ -1,5 +1,5 @@
 import { createClient } from '../actions';
-import { TRACK_LABELS, TYPE_ORGANISATION_LABELS } from '@/lib/labels';
+import { TRACK_LABELS, TYPE_ORGANISATION_LABELS, SECTEUR_LABELS } from '@/lib/labels';
 import { requireAdmin } from '@/lib/auth/current-user';
 
 const inputClass = 'mt-1 w-full border border-line bg-bg px-3 py-2 text-sm text-fg focus:outline-none focus:border-accent';
@@ -39,7 +39,14 @@ export default async function NewClientPage() {
         </div>
         <div>
           <label className={labelClass}>Secteur</label>
-          <input name="secteur" className={inputClass} />
+          <select name="secteur" defaultValue="" className={inputClass}>
+            <option value="">—</option>
+            {Object.entries(SECTEUR_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </div>
         <button type="submit" className="bg-fg px-4 py-2 text-sm font-medium text-bg">
           Créer

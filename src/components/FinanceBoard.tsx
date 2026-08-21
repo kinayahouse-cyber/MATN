@@ -6,13 +6,16 @@ import { EditableField } from '@/components/EditableField';
 import { DatabaseToolbar } from '@/components/database/DatabaseToolbar';
 import { useDatabaseView } from '@/components/database/useDatabaseView';
 import type { PropertyDef } from '@/components/database/types';
+import { Card } from '@/components/ui/Card';
 import { TagSelect } from '@/components/ui/TagSelect';
-import { StatTile } from '@/components/ui/Stat';
+import { StatTile, HeroStat, BarChart, HeatGrid } from '@/components/ui/Stat';
 import { updateProjetField } from '@/app/(app)/projets/actions';
 import { TRACK_LABELS, STADE_PROJET_LABELS, TRACK_TONE } from '@/lib/labels';
 
 const trackOptions = Object.entries(TRACK_LABELS).map(([value, label]) => ({ value, label }));
 const stadeOptions = Object.entries(STADE_PROJET_LABELS).map(([value, label]) => ({ value, label }));
+const TRACK_ROWS = Object.entries(TRACK_LABELS).map(([, label]) => label);
+const STADE_COLS = Object.entries(STADE_PROJET_LABELS).map(([, label]) => label);
 
 function formatDZD(n: number) {
   return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(n) + ' DZD';
@@ -29,10 +32,18 @@ type Projet = {
   budgetDepense: number;
 };
 
+type MonthlyDepense = { label: string; total: number };
+
 // Vue agrégée MVP : une ligne par projet, budget/encaissé édités en place (mêmes actions que le
 // Project Workspace), dépensé et marge dérivés en lecture seule — aucun rapprochement
 // facture/paiement n'est modélisé, comme dans ProjectFinance.
-export function FinanceBoard({ projets }: { projets: Projet[] }) {
+export function FinanceBoard({
+  projets,
+  monthlyDepenses,
+}: {
+  projets: Projet[];
+  monthlyDepenses: MonthlyDepense[];
+}) {
   const properties = useMemo<PropertyDef<Projet>[]>(
     () => [
       { key: 'nom', label: 'Projet', getValue: (p) => p.nom, alwaysVisible: true, groupable: false },
@@ -95,19 +106,34 @@ export function FinanceBoard({ projets }: { projets: Projet[] }) {
   );
   const marge = totals.budget - totals.depense;
 
+  // Portefeuille complet (pas `filtered`) : la heatmap donne une vue d'ensemble, indépendante des
+  // filtres appliqués au tableau du dessous.
+  const trackStadeCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of projets) {
+      const trackLabel = p.track ? TRACK_LABELS[p.track] : null;
+      const stadeLabel = STADE_PROJET_LABELS[p.stade];
+      if (!trackLabel || !stadeLabel) continue;
+      const k = `${trackLabel}·${stadeLabel}`;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    const max = Math.max(1, ...counts.values());
+    return { counts, max };
+  }, [projets]);
+
   const renderRow = (p: Projet) => {
     const budgetRaw = p.budget !== null ? String(p.budget) : '';
     const encaisseRaw = p.budgetEncaisse !== null ? String(p.budgetEncaisse) : '';
     const margeProjet = p.budget !== null ? p.budget - p.budgetDepense : null;
 
     return (
-      <tr key={p.id} className="border-b border-line">
-        <td className="py-2 pr-4">
+      <tr key={p.id} className="divide-x divide-line border-b border-line">
+        <td className="py-2 px-4">
           <Link href={`/projets/${p.id}`} className="text-sm font-medium hover:underline">
             {p.code} — {p.nom}
           </Link>
         </td>
-        <td className="pr-4">
+        <td className="px-4">
           {p.track ? (
             <TagSelect
               value={p.track}
@@ -126,7 +152,7 @@ export function FinanceBoard({ projets }: { projets: Projet[] }) {
             />
           )}
         </td>
-        <td className="pr-4">
+        <td className="px-4">
           <TagSelect
             value={p.stade}
             options={stadeOptions}
@@ -135,7 +161,7 @@ export function FinanceBoard({ projets }: { projets: Projet[] }) {
             ariaLabel={`Stade de ${p.nom}`}
           />
         </td>
-        <td className="pr-4 tabular-nums text-muted">
+        <td className="px-4 tabular-nums text-muted">
           <EditableField
             value={budgetRaw}
             displayValue={p.budget !== null ? formatDZD(p.budget) : undefined}
@@ -143,8 +169,8 @@ export function FinanceBoard({ projets }: { projets: Projet[] }) {
             type="number"
           />
         </td>
-        <td className="pr-4 tabular-nums text-muted">{formatDZD(p.budgetDepense)}</td>
-        <td className="pr-4 tabular-nums text-muted">
+        <td className="px-4 tabular-nums text-muted">{formatDZD(p.budgetDepense)}</td>
+        <td className="px-4 tabular-nums text-muted">
           <EditableField
             value={encaisseRaw}
             displayValue={p.budgetEncaisse !== null ? formatDZD(p.budgetEncaisse) : undefined}
@@ -166,15 +192,30 @@ export function FinanceBoard({ projets }: { projets: Projet[] }) {
   return (
     <div>
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <HeroStat label="Marge prévisionnelle" value={formatDZD(marge)} caption="budget − dépensé" />
         <StatTile label="Budget total" value={formatDZD(totals.budget)} />
         <StatTile label="Dépensé" value={formatDZD(totals.depense)} />
         <StatTile label="Encaissé" value={formatDZD(totals.encaisse)} tone="positive" />
-        <StatTile
-          label="Marge prév."
-          value={formatDZD(marge)}
-          tone={marge < 0 ? 'negative' : 'positive'}
-          caption="budget − dépensé"
-        />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card padded={false} className="p-5">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Dépenses — 6 derniers mois</p>
+          <div className="mt-4">
+            <BarChart bars={monthlyDepenses.map((m) => ({ label: m.label, value: m.total }))} />
+          </div>
+        </Card>
+
+        <Card padded={false} className="p-5">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Portefeuille — Track × Stade</p>
+          <div className="mt-4">
+            <HeatGrid
+              rows={TRACK_ROWS}
+              cols={STADE_COLS}
+              value={(r, c) => (trackStadeCounts.counts.get(`${r}·${c}`) ?? 0) / trackStadeCounts.max}
+            />
+          </div>
+        </Card>
       </div>
 
       <div className="mt-6">
@@ -185,13 +226,13 @@ export function FinanceBoard({ projets }: { projets: Projet[] }) {
         ) : (
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
-                <th className="py-2 pr-4 font-normal">Projet</th>
-                <th className="pr-4 font-normal">Track</th>
-                <th className="pr-4 font-normal">Stade</th>
-                <th className="pr-4 font-normal">Budget total</th>
-                <th className="pr-4 font-normal">Dépensé</th>
-                <th className="pr-4 font-normal">Encaissé</th>
+              <tr className="divide-x divide-line border-b border-line text-xs uppercase tracking-wide text-muted">
+                <th className="py-2 px-4 font-normal">Projet</th>
+                <th className="px-4 font-normal">Track</th>
+                <th className="px-4 font-normal">Stade</th>
+                <th className="px-4 font-normal">Budget total</th>
+                <th className="px-4 font-normal">Dépensé</th>
+                <th className="px-4 font-normal">Encaissé</th>
                 <th className="font-normal">Marge</th>
               </tr>
             </thead>

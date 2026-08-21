@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { uploadToStorage } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/auth/current-user';
-import type { Track, Engagement, TypeDocument, TypeAsset, StadeProjet, Prisma } from '@prisma/client';
+import type { Track, Engagement, TypeDocument, TypeAsset, StadeProjet, StatutTache, Prisma } from '@prisma/client';
 
 export async function createProjet(formData: FormData) {
   const code = String(formData.get('code') ?? '').trim();
@@ -227,7 +227,8 @@ export async function createTacheInline(
   projetId: string,
   libelle: string,
   echeance: string,
-  assigneAId: string
+  assigneAId: string,
+  statut?: StatutTache
 ) {
   const trimmed = libelle.trim();
   if (!trimmed) throw new Error('Libellé requis');
@@ -238,6 +239,7 @@ export async function createTacheInline(
       libelle: trimmed,
       echeance: echeance ? new Date(echeance) : null,
       assigneAId: assigneAId || null,
+      statut: statut ?? 'A_FAIRE',
     },
   });
 
@@ -248,13 +250,14 @@ const TACHE_EDITABLE_FIELDS = [
   'libelle',
   'description',
   'statut',
+  'priorite',
   'dateDebut',
   'echeance',
   'assigneAId',
 ] as const;
 type TacheField = (typeof TACHE_EDITABLE_FIELDS)[number];
 const TACHE_DATE_FIELDS = new Set(['dateDebut', 'echeance']);
-const TACHE_REQUIRED_FIELDS = new Set(['libelle', 'statut']);
+const TACHE_REQUIRED_FIELDS = new Set(['libelle', 'statut', 'priorite']);
 
 export async function updateTacheField(id: string, field: TacheField, value: string) {
   if (!TACHE_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');

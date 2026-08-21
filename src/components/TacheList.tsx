@@ -12,10 +12,16 @@ import { useDatabaseView } from '@/components/database/useDatabaseView';
 import type { PropertyDef } from '@/components/database/types';
 import { Card } from '@/components/ui/Card';
 import { TagSelect } from '@/components/ui/TagSelect';
+import { KanbanQuickAdd } from '@/components/KanbanQuickAdd';
 import { updateTacheField, deleteTache } from '@/app/(app)/projets/actions';
-import { STATUT_TACHE_LABELS } from '@/lib/labels';
+import { STATUT_TACHE_LABELS, PRIORITE_TACHE_LABELS, PRIORITE_TACHE_TONE } from '@/lib/labels';
+import type { StatutTache } from '@prisma/client';
 
 const statutTacheOptions = Object.entries(STATUT_TACHE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+const prioriteTacheOptions = Object.entries(PRIORITE_TACHE_LABELS).map(([value, label]) => ({
   value,
   label,
 }));
@@ -24,10 +30,10 @@ const STATUT_VALUES = Object.keys(STATUT_TACHE_LABELS);
 // Seules ces propriétés sont modifiables par glisser-déposer : ce sont celles que le kanban peut
 // écrire via updateTacheField. Grouper par autre chose désactive le drag plutôt que de faire
 // croire à une action possible.
-const DRAGGABLE_GROUP_KEYS = ['statut', 'assigneAId'] as const;
+const DRAGGABLE_GROUP_KEYS = ['statut', 'assigneAId', 'priorite'] as const;
 
 const statutTone = (statut: string) =>
-  statut === 'EN_COURS' ? 'accent' : statut === 'FAIT' ? 'emerald' : 'neutral';
+  statut === 'EN_COURS' ? 'accent' : statut === 'EN_PAUSE' ? 'amber' : statut === 'FAIT' ? 'emerald' : 'neutral';
 
 type Utilisateur = { id: string; nom: string | null; email: string };
 type Tache = {
@@ -35,6 +41,7 @@ type Tache = {
   libelle: string;
   description: string | null;
   statut: string;
+  priorite: string;
   dateDebut: Date | null;
   echeance: Date | null;
   assigneAId: string | null;
@@ -88,6 +95,14 @@ export function TacheList({
         alwaysVisible: true,
       },
       {
+        key: 'priorite',
+        label: 'Priorité',
+        getValue: (t) => t.priorite,
+        format: (v) => PRIORITE_TACHE_LABELS[v] ?? v,
+        options: prioriteTacheOptions,
+        alwaysVisible: true,
+      },
+      {
         key: 'dateDebut',
         label: 'Début',
         getValue: (t) => (t.dateDebut ? t.dateDebut.toISOString().slice(0, 10) : ''),
@@ -130,19 +145,24 @@ export function TacheList({
     if (!id || !canDrag) return;
     const tache = taches.find((t) => t.id === id);
     if (!tache) return;
-    const current = groupKey === 'statut' ? tache.statut : (tache.assigneAId ?? '');
+    const current =
+      groupKey === 'statut' ? tache.statut : groupKey === 'priorite' ? tache.priorite : (tache.assigneAId ?? '');
     if (current === targetValue) return;
     startTransition(async () => {
-      await updateTacheField(id, groupKey as 'statut' | 'assigneAId', targetValue);
+      await updateTacheField(id, groupKey as 'statut' | 'assigneAId' | 'priorite', targetValue);
     });
   };
 
+  // Carte Kanban : pastille priorité, titre, séparateur, description (3 lignes), pied
+  // Assigné à / Échéance — même rythme visuel que la référence fournie, adapté à nos données
+  // (pas de tags libres sur Tache, donc pas de rangée de chips génériques).
   const renderCard = (t: Tache, draggable = false) => {
     const fait = t.statut === 'FAIT';
     return (
       <Card
         key={t.id}
-        className={`transition-colors duration-fast hover:border-line-strong ${
+        padded={false}
+        className={`rounded-xl p-3.5 transition-colors duration-fast hover:border-line-strong ${
           draggable ? 'cursor-grab active:cursor-grabbing' : ''
         } ${dragId === t.id ? 'opacity-40' : ''}`}
       >
@@ -155,32 +175,50 @@ export function TacheList({
           }}
         >
           <div className="flex items-start justify-between gap-2">
-            <p
-              className={`text-sm font-medium leading-snug ${fait ? 'text-muted line-through' : ''}`}
-            >
-              {t.libelle}
-            </p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <TagSelect
+                value={t.priorite}
+                options={prioriteTacheOptions}
+                onSave={updateTacheField.bind(null, t.id, 'priorite')}
+                tone={PRIORITE_TACHE_TONE[t.priorite] ?? 'neutral'}
+                ariaLabel={`Priorité de ${t.libelle}`}
+              />
+              <TagSelect
+                value={t.statut}
+                options={statutTacheOptions}
+                onSave={updateTacheField.bind(null, t.id, 'statut')}
+                tone={statutTone(t.statut)}
+                ariaLabel={`Statut de ${t.libelle}`}
+              />
+            </div>
             <DeleteButton action={deleteTache.bind(null, t.id)} />
           </div>
-          {t.description && <p className="mt-1 line-clamp-2 text-xs text-muted">{t.description}</p>}
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <TagSelect
-              value={t.statut}
-              options={statutTacheOptions}
-              onSave={updateTacheField.bind(null, t.id, 'statut')}
-              tone={statutTone(t.statut)}
-              ariaLabel={`Statut de ${t.libelle}`}
-            />
-            {t.echeance && (
-              <span className="font-mono text-[11px] text-muted">
-                {t.echeance.toISOString().slice(0, 10)}
-              </span>
-            )}
-            {t.assigneAId && (
-              <span className="text-[11px] text-muted">
-                {userOptions.find((o) => o.value === t.assigneAId)?.label}
-              </span>
-            )}
+
+          <p
+            className={`mt-2.5 border-b border-line pb-2.5 text-sm font-semibold leading-snug ${
+              fait ? 'text-muted line-through' : 'text-fg'
+            }`}
+          >
+            {t.libelle}
+          </p>
+
+          {t.description && (
+            <p className="mt-2.5 line-clamp-3 text-xs leading-relaxed text-muted">{t.description}</p>
+          )}
+
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <p className="text-muted">Assigné à</p>
+              <p className="mt-0.5 font-medium text-fg">
+                {userOptions.find((o) => o.value === t.assigneAId)?.label ?? 'Non assigné'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-muted">Échéance</p>
+              <p className="mt-0.5 font-mono font-medium text-fg">
+                {t.echeance ? t.echeance.toISOString().slice(0, 10) : '—'}
+              </p>
+            </div>
           </div>
         </div>
       </Card>
@@ -190,7 +228,7 @@ export function TacheList({
   const renderRow = (t: Tache) => {
     const fait = t.statut === 'FAIT';
     return (
-      <tr key={t.id} className="border-b border-line">
+      <tr key={t.id} className="divide-x divide-line border-b border-line">
         <td className="py-2">
           <div className="flex items-center gap-2">
             <TacheDoneCheckbox id={t.id} statut={t.statut} />
@@ -201,7 +239,7 @@ export function TacheList({
             />
           </div>
         </td>
-        <td className="text-muted">
+        <td className="pl-3 text-muted">
           <EditableField
             value={t.statut}
             onSave={updateTacheField.bind(null, t.id, 'statut')}
@@ -209,21 +247,30 @@ export function TacheList({
             options={statutTacheOptions}
           />
         </td>
-        <td className="text-muted">
+        <td className="pl-3 text-muted">
+          <TagSelect
+            value={t.priorite}
+            options={prioriteTacheOptions}
+            onSave={updateTacheField.bind(null, t.id, 'priorite')}
+            tone={PRIORITE_TACHE_TONE[t.priorite] ?? 'neutral'}
+            ariaLabel={`Priorité de ${t.libelle}`}
+          />
+        </td>
+        <td className="pl-3 text-muted">
           <EditableField
             value={t.dateDebut ? t.dateDebut.toISOString().slice(0, 10) : ''}
             onSave={updateTacheField.bind(null, t.id, 'dateDebut')}
             type="date"
           />
         </td>
-        <td className="text-muted">
+        <td className="pl-3 text-muted">
           <EditableField
             value={t.echeance ? t.echeance.toISOString().slice(0, 10) : ''}
             onSave={updateTacheField.bind(null, t.id, 'echeance')}
             type="date"
           />
         </td>
-        <td className="text-muted">
+        <td className="pl-3 text-muted">
           <EditableField
             value={t.assigneAId ?? ''}
             onSave={updateTacheField.bind(null, t.id, 'assigneAId')}
@@ -232,7 +279,7 @@ export function TacheList({
             placeholder="non assigné"
           />
         </td>
-        <td>
+        <td className="pl-3">
           <DeleteButton action={deleteTache.bind(null, t.id)} />
         </td>
       </tr>
@@ -255,7 +302,7 @@ export function TacheList({
       ) : filtered.length === 0 ? (
         <p className="text-sm text-muted">{empty}</p>
       ) : state.view === 'board' ? (
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        <div className="flex gap-4 overflow-x-auto pb-2">
           {kanbanGroups.map((g) => (
             <div
               key={g.key}
@@ -270,21 +317,20 @@ export function TacheList({
                 e.preventDefault();
                 dropInto(g.key);
               }}
-              className={`w-64 shrink-0 rounded-lg border p-2 transition-colors duration-fast ${
-                overKey === g.key && canDrag
-                  ? 'border-accent bg-accent/5'
-                  : 'border-line bg-bg/40'
+              className={`w-72 shrink-0 rounded-2xl border p-3 transition-colors duration-fast ${
+                overKey === g.key && canDrag ? 'border-accent bg-accent/5' : 'border-line bg-surface/60'
               }`}
             >
-              <p className="px-1 py-1 text-xs uppercase tracking-wide text-muted">
-                {g.label} <span className="text-line-strong">({g.rows.length})</span>
+              <p className="px-1 py-1 font-display text-lg tracking-tight text-fg">
+                {g.label} <span className="text-sm font-normal text-line-strong">({g.rows.length})</span>
               </p>
-              <div className="mt-1 space-y-2">
+              <div className="mt-2 space-y-2.5">
                 {g.rows.map((t) => renderCard(t, canDrag))}
-                {g.rows.length === 0 && (
-                  <p className="px-1 py-4 text-center text-xs text-line-strong">
-                    {canDrag ? 'Déposer ici' : '—'}
-                  </p>
+                {g.rows.length === 0 && !canDrag && (
+                  <p className="px-1 py-4 text-center text-xs text-line-strong">—</p>
+                )}
+                {groupKey === 'statut' && (
+                  <KanbanQuickAdd projetId={projetId} statut={g.key as StatutTache} />
                 )}
               </div>
             </div>
@@ -295,13 +341,14 @@ export function TacheList({
       ) : (
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
+            <tr className="divide-x divide-line border-b border-line text-xs uppercase tracking-wide text-muted">
               <th className="py-2 font-normal">Tâche</th>
-              <th className="font-normal">Statut</th>
-              <th className="font-normal">Début</th>
-              <th className="font-normal">Échéance</th>
-              <th className="font-normal">Assigné à</th>
-              <th className="w-6 font-normal" />
+              <th className="pl-3 font-normal">Statut</th>
+              <th className="pl-3 font-normal">Priorité</th>
+              <th className="pl-3 font-normal">Début</th>
+              <th className="pl-3 font-normal">Échéance</th>
+              <th className="pl-3 font-normal">Assigné à</th>
+              <th className="w-6 pl-3 font-normal" />
             </tr>
           </thead>
           <tbody>
@@ -310,7 +357,7 @@ export function TacheList({
                   <Fragment key={g.key}>
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="pb-1 pt-5 text-[10px] uppercase tracking-[0.12em] text-muted"
                       >
                         {g.label} <span className="text-line-strong">({g.rows.length})</span>

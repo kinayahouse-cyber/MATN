@@ -25,6 +25,7 @@ export default async function TachesPage() {
     libelle: t.libelle,
     description: t.description,
     statut: t.statut,
+    priorite: t.priorite,
     dateDebut: t.dateDebut,
     echeance: t.echeance,
     assigneAId: t.assigneAId,

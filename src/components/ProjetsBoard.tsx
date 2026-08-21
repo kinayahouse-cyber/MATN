@@ -120,7 +120,7 @@ export function ProjetsBoard({
   }, [groups, filtered, properties]);
 
   const renderRow = (p: Projet) => (
-    <tr key={p.id} className="border-b border-line">
+    <tr key={p.id} className="divide-x divide-line border-b border-line">
       {!readOnly && (
         <td className="py-2">
           <input
@@ -131,14 +131,14 @@ export function ProjetsBoard({
           />
         </td>
       )}
-      {isVisible('code') && <td className="font-mono text-xs text-muted">{p.code}</td>}
-      <td>
+      {isVisible('code') && <td className="pl-3 font-mono text-xs text-muted">{p.code}</td>}
+      <td className="pl-3">
         <Link href={`/projets/${p.id}`} className="hover:underline">
           {p.nom}
         </Link>
       </td>
       {isVisible('client') && (
-        <td className="text-muted">
+        <td className="pl-3 text-muted">
           {readOnly ? (
             clients.find((c) => c.id === p.organisationId)?.nom ?? '—'
           ) : (
@@ -152,7 +152,7 @@ export function ProjetsBoard({
         </td>
       )}
       {isVisible('track') && (
-        <td className="text-muted">
+        <td className="pl-3 text-muted">
           {readOnly ? (
             (p.track && TRACK_LABELS[p.track]) ?? '—'
           ) : (
@@ -166,7 +166,7 @@ export function ProjetsBoard({
         </td>
       )}
       {isVisible('stade') && (
-        <td className="text-muted">
+        <td className="pl-3 text-muted">
           <div className="flex items-center gap-2">
             <StatusDot active={p.stade === 'EN_COURS'} muted={p.stade === 'ABANDONNE'} />
             {readOnly ? (
@@ -183,7 +183,7 @@ export function ProjetsBoard({
         </td>
       )}
       {!readOnly && (
-        <td>
+        <td className="pl-3">
           <DeleteButton
             action={deleteProjet.bind(null, p.id)}
             confirmMessage={`Supprimer le projet ${p.nom} ? Fichiers, tâches et dépenses associés seront aussi supprimés.`}
@@ -252,7 +252,7 @@ export function ProjetsBoard({
       {state.view === 'list' ? (
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
+            <tr className="divide-x divide-line border-b border-muted text-xs uppercase tracking-wide text-muted">
               {!readOnly && (
                 <th className="w-6 py-2 font-normal">
                   <input
@@ -263,12 +263,12 @@ export function ProjetsBoard({
                   />
                 </th>
               )}
-              {isVisible('code') && <th className="font-normal">Code</th>}
-              <th className="font-normal">Nom</th>
-              {isVisible('client') && <th className="font-normal">Client</th>}
-              {isVisible('track') && <th className="font-normal">Track</th>}
-              {isVisible('stade') && <th className="font-normal">Stade</th>}
-              {!readOnly && <th className="w-6 font-normal" />}
+              {isVisible('code') && <th className="pl-3 font-normal">Code</th>}
+              <th className="pl-3 font-normal">Nom</th>
+              {isVisible('client') && <th className="pl-3 font-normal">Client</th>}
+              {isVisible('track') && <th className="pl-3 font-normal">Track</th>}
+              {isVisible('stade') && <th className="pl-3 font-normal">Stade</th>}
+              {!readOnly && <th className="w-6 pl-3 font-normal" />}
             </tr>
           </thead>
           <tbody>

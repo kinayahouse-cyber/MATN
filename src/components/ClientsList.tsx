@@ -12,8 +12,10 @@ import {
   TRACK_LABELS,
   TYPE_ORGANISATION_LABELS,
   ETAT_PROSPECTION_LABELS,
+  SECTEUR_LABELS,
   TRACK_TONE,
   ETAT_PROSPECTION_TONE,
+  SECTEUR_TONE,
 } from '@/lib/labels';
 import { TagSelect } from '@/components/ui/TagSelect';
 
@@ -27,6 +29,7 @@ const etatProspectionOptions = Object.entries(ETAT_PROSPECTION_LABELS).map(([val
   value,
   label,
 }));
+const secteurOptions = Object.entries(SECTEUR_LABELS).map(([value, label]) => ({ value, label }));
 
 type Client = {
   id: string;
@@ -62,7 +65,13 @@ export function ClientsList({ clients }: { clients: Client[] }) {
         format: (v) => TRACK_LABELS[v] ?? v,
         options: trackOptions,
       },
-      { key: 'secteur', label: 'Secteur', getValue: (c) => c.secteur ?? '' },
+      {
+        key: 'secteur',
+        label: 'Secteur',
+        getValue: (c) => c.secteur ?? '',
+        format: (v) => SECTEUR_LABELS[v] ?? v,
+        options: secteurOptions,
+      },
     ],
     []
   );
@@ -81,14 +90,14 @@ export function ClientsList({ clients }: { clients: Client[] }) {
     ].filter(Boolean).length;
 
   const renderRow = (c: Client) => (
-    <tr key={c.id} className="border-b border-line">
-      <td className="py-2">
+    <tr key={c.id} className="divide-x divide-line border-b border-line">
+      <td className="py-2 pr-3">
         <Link href={`/clients/${c.id}`} className="hover:underline">
           {c.nom}
         </Link>
       </td>
       {isVisible('type') && (
-        <td className="text-muted">
+        <td className="pl-3 text-muted">
           <EditableField
             value={c.type}
             onSave={updateOrganisationField.bind(null, c.id, 'type')}
@@ -98,7 +107,7 @@ export function ClientsList({ clients }: { clients: Client[] }) {
         </td>
       )}
       {isVisible('etatProspection') && (
-        <td>
+        <td className="pl-3">
           <TagSelect
             value={c.etatProspection}
             options={etatProspectionOptions}
@@ -109,7 +118,7 @@ export function ClientsList({ clients }: { clients: Client[] }) {
         </td>
       )}
       {isVisible('track') && (
-        <td>
+        <td className="pl-3">
           {c.track ? (
             <TagSelect
               value={c.track}
@@ -130,14 +139,27 @@ export function ClientsList({ clients }: { clients: Client[] }) {
         </td>
       )}
       {isVisible('secteur') && (
-        <td className="text-muted">
-          <EditableField
-            value={c.secteur ?? ''}
-            onSave={updateOrganisationField.bind(null, c.id, 'secteur')}
-          />
+        <td className="pl-3">
+          {c.secteur ? (
+            <TagSelect
+              value={c.secteur}
+              options={secteurOptions}
+              onSave={updateOrganisationField.bind(null, c.id, 'secteur')}
+              tone={SECTEUR_TONE[c.secteur] ?? 'neutral'}
+              ariaLabel={`Secteur de ${c.nom}`}
+            />
+          ) : (
+            <EditableField
+              value=""
+              onSave={updateOrganisationField.bind(null, c.id, 'secteur')}
+              type="select"
+              options={secteurOptions}
+              className="text-muted"
+            />
+          )}
         </td>
       )}
-      <td>
+      <td className="pl-3">
         <DeleteButton
           action={deleteOrganisation.bind(null, c.id)}
           confirmMessage={`Supprimer ${c.nom} ? Les projets liés seront détachés, pas supprimés.`}
@@ -163,13 +185,13 @@ export function ClientsList({ clients }: { clients: Client[] }) {
       ) : (
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-muted text-xs uppercase tracking-wide text-muted">
+            <tr className="divide-x divide-line border-b border-muted text-xs uppercase tracking-wide text-muted">
               <th className="py-2 font-normal">Nom</th>
-              {isVisible('type') && <th className="font-normal">Type</th>}
-              {isVisible('etatProspection') && <th className="font-normal">Prospection</th>}
-              {isVisible('track') && <th className="font-normal">Track</th>}
-              {isVisible('secteur') && <th className="font-normal">Secteur</th>}
-              <th className="w-6 font-normal" />
+              {isVisible('type') && <th className="pl-3 font-normal">Type</th>}
+              {isVisible('etatProspection') && <th className="pl-3 font-normal">Prospection</th>}
+              {isVisible('track') && <th className="pl-3 font-normal">Track</th>}
+              {isVisible('secteur') && <th className="pl-3 font-normal">Secteur</th>}
+              <th className="w-6 pl-3 font-normal" />
             </tr>
           </thead>
           <tbody>
