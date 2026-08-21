@@ -70,7 +70,9 @@ export function DocumentImprimable({
   const label = type === 'FACTURE' ? 'Facture' : 'Devis';
 
   return (
-    <div className="imprimable min-h-screen bg-bg py-10 text-fg print:min-h-0 print:bg-bg print:py-0">
+    // font-sans (Space Grotesk) porte tout le document ; font-display (Bricolage) est réservé
+    // aux deux moments d'affichage — le numéro en en-tête et le Total TTC.
+    <div className="imprimable min-h-screen bg-bg py-10 font-sans text-fg print:min-h-0 print:bg-bg print:py-0">
       <button
         type="button"
         onClick={() => window.print()}
@@ -121,25 +123,29 @@ export function DocumentImprimable({
           </div>
         </div>
 
-        {/* Lignes */}
-        <table className="mt-10 w-full text-left text-sm">
+        {/* Lignes — Space Grotesk (font-sans) et corps réduit : le détail des articles se lit,
+            il ne domine pas. Cellules alignées en bas (align-bottom) pour que les montants
+            reposent sur la même ligne de pied qu'un libellé passé sur deux lignes. */}
+        <table className="mt-10 w-full text-left font-sans text-xs">
           <thead>
-            <tr className="border-b border-line-strong text-[10px] uppercase tracking-[0.1em] text-muted">
-              <th className="pb-2 font-normal">Description</th>
-              <th className="pb-2 pl-4 text-right font-normal">Qté</th>
-              <th className="pb-2 pl-4 text-right font-normal">Prix unitaire</th>
-              <th className="pb-2 pl-4 text-right font-normal">Montant</th>
+            <tr className="border-b border-line-strong text-[9px] uppercase tracking-[0.1em] text-muted">
+              <th className="pb-2 align-bottom font-normal">Description</th>
+              <th className="pb-2 pl-4 text-right align-bottom font-normal">Qté</th>
+              <th className="pb-2 pl-4 text-right align-bottom font-normal">Prix unitaire</th>
+              <th className="pb-2 pl-4 text-right align-bottom font-normal">Montant</th>
             </tr>
           </thead>
           <tbody>
             {lignes.map((l) => (
               <tr key={l.id} className="border-b border-line/20">
-                <td className="py-2 pr-4 text-fg">{l.libelle}</td>
-                <td className="py-2 pl-4 text-right tabular-nums text-muted">{l.quantite}</td>
-                <td className="py-2 pl-4 text-right tabular-nums text-muted">
+                <td className="py-2 pr-4 align-bottom text-fg">{l.libelle}</td>
+                <td className="py-2 pl-4 text-right align-bottom tabular-nums text-muted">
+                  {l.quantite}
+                </td>
+                <td className="py-2 pl-4 text-right align-bottom tabular-nums text-muted">
                   {formatDZD(l.prixUnitaire)}
                 </td>
-                <td className="py-2 pl-4 text-right tabular-nums text-fg">
+                <td className="py-2 pl-4 text-right align-bottom tabular-nums text-fg">
                   {formatDZD(l.quantite * l.prixUnitaire)}
                 </td>
               </tr>
@@ -147,25 +153,31 @@ export function DocumentImprimable({
           </tbody>
         </table>
 
-        {/* Totaux — Total TTC volontairement dominant : c'est le chiffre que le client retient. */}
-        <div className="ml-auto mt-6 w-80 space-y-2">
-          <div className="flex items-center justify-between text-base text-muted">
+        {/* Totaux — contrepoint des lignes : corps nettement plus grand, Total TTC en Bricolage
+            (font-display) puisque c'est le chiffre que le client retient. Les montants sont
+            alignés sur leur ligne de base commune (items-baseline). */}
+        <div className="ml-auto mt-8 w-96 max-w-full space-y-2.5">
+          <div className="flex items-baseline justify-between gap-6 text-lg text-muted">
             <span>Sous-total HT</span>
-            <span className="tabular-nums">{formatDZD(totaux.ht)}</span>
+            <span className="whitespace-nowrap tabular-nums">{formatDZD(totaux.ht)}</span>
           </div>
           {!!remisePct && (
-            <div className="flex items-center justify-between text-base text-muted">
+            <div className="flex items-baseline justify-between gap-6 text-lg text-muted">
               <span>Réduction ({remisePct}%)</span>
-              <span className="tabular-nums">− {formatDZD(totaux.remise)}</span>
+              <span className="whitespace-nowrap tabular-nums">− {formatDZD(totaux.remise)}</span>
             </div>
           )}
-          <div className="flex items-center justify-between text-base text-muted">
+          <div className="flex items-baseline justify-between gap-6 text-lg text-muted">
             <span>TVA ({tauxTva ?? 0}%)</span>
-            <span className="tabular-nums">{formatDZD(totaux.tva)}</span>
+            <span className="whitespace-nowrap tabular-nums">{formatDZD(totaux.tva)}</span>
           </div>
-          <div className="flex items-center justify-between border-t border-line-strong pt-3 font-display text-3xl font-bold tracking-tight text-fg">
-            <span>Total TTC</span>
-            <span className="tabular-nums">{formatDZD(totaux.ttc)}</span>
+          {/* Le libellé reste sobre, seul le montant passe en grand : à taille égale les deux
+              se disputaient la largeur et « Total TTC » repassait à la ligne. */}
+          <div className="flex items-baseline justify-between gap-6 border-t border-line-strong pt-3">
+            <span className="text-sm uppercase tracking-[0.12em] text-fg">Total TTC</span>
+            <span className="whitespace-nowrap font-display text-4xl font-bold tracking-tight text-fg tabular-nums">
+              {formatDZD(totaux.ttc)}
+            </span>
           </div>
         </div>
 
@@ -197,8 +209,14 @@ export function DocumentImprimable({
         {/* Logo en grand + contact, poussés en pied de page (mt-auto dans le conteneur flex-col). */}
         <div className="mt-auto pt-12 text-center">
           {agence.logoUrl && (
+            // Largeur pilotée plutôt que hauteur : le logo Kinaya est un lettrage très large
+            // (~6,5:1) — le caler en hauteur le ferait déborder la colonne de texte.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={agence.logoUrl} alt={agence.nom ?? 'Logo'} className="mx-auto h-24 w-auto object-contain" />
+            <img
+              src={agence.logoUrl}
+              alt={agence.nom ?? 'Logo'}
+              className="mx-auto w-full max-w-[420px] object-contain"
+            />
           )}
           {(agence.email || agence.telephone) && (
             <p className="mt-3 text-[11px] text-muted">
