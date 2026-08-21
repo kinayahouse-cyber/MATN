@@ -90,6 +90,22 @@ export const STATUT_DOCUMENT_TONE: Record<string, 'slate' | 'sky' | 'amber' | 'e
   REFUSE: 'rose',
 };
 
+// État d'une créance client — dérivé (voir computeCreance), pas une enum Prisma : ces libellés
+// décrivent un calcul, pas une colonne.
+export const STATUT_CREANCE_LABELS: Record<string, string> = {
+  PAYEE: 'Payée',
+  PARTIELLE: 'Partielle',
+  IMPAYEE: 'Impayée',
+  EN_RETARD: 'En retard',
+};
+
+export const STATUT_CREANCE_TONE: Record<string, 'emerald' | 'amber' | 'slate' | 'rose'> = {
+  PAYEE: 'emerald',
+  PARTIELLE: 'amber',
+  IMPAYEE: 'slate',
+  EN_RETARD: 'rose',
+};
+
 export const CATEGORIE_FOURNISSEUR_LABELS: Record<string, string> = {
   CINEMA: 'Cinéma',
   MOTION: 'Motion',

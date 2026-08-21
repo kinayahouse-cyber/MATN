@@ -306,7 +306,12 @@ model Document {
   tauxTva   Decimal? @db.Decimal(5, 2)
   remisePct Decimal? @db.Decimal(5, 2)
 
-  lignes LigneDocument[] // vide pour les types hors DEVIS/FACTURE
+  // Échéance de règlement d'une FACTURE (créance client). NULL = pas d'échéance fixée : la
+  // facture apparaît quand même dans l'échéancier, simplement sans retard calculable.
+  dateEcheance DateTime?
+
+  lignes    LigneDocument[] // vide pour les types hors DEVIS/FACTURE
+  paiements Paiement[]
 
   versionDe   Document?  @relation("DocumentVersions", fields: [versionDeId], references: [id])
   versionDeId String?
@@ -321,6 +326,29 @@ model Document {
   // à ajouter en SQL brut après `prisma migrate dev` (migration éditée manuellement).
 
   @@map("documents")
+}
+
+// Encaissement réel sur une FACTURE. Modèle à part plutôt qu'un simple champ `montantPaye` :
+// les règlements sont fractionnés en pratique (acompte à la commande puis solde), et l'état de
+// la créance (payée / partielle / impayée / en retard) se DÉDUIT de la somme des paiements
+// rapportée au TTC — il n'est jamais stocké, donc jamais désynchronisé (voir
+// src/lib/facturation.ts, computeCreance).
+//
+// NB : `Projet.budgetEncaisse`, saisi à la main, fait doublon avec ces paiements dès qu'ils sont
+// utilisés. Conservé tel quel pour l'instant — arbitrage à faire séparément.
+model Paiement {
+  id         String   @id @default(cuid())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+
+  montant Decimal  @db.Decimal(14, 2)
+  date    DateTime @default(now())
+  methode String? // virement, chèque, espèces… texte libre, pas d'enum tant que l'usage n'est pas fixé
+  notes   String?
+
+  createdAt DateTime @default(now())
+
+  @@map("paiements")
 }
 
 // Infos de Kinaya elle-même (le "prestataire" sur les devis/factures imprimés) — ligne unique,

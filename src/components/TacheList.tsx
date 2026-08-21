@@ -295,6 +295,7 @@ export function TacheList({
         view={view}
         properties={properties}
         views={['list', 'timeline', 'board', 'calendar']}
+        showSearch={false}
       />
 
       {state.view === 'calendar' ? (

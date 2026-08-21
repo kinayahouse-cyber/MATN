@@ -2,15 +2,28 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth/current-user';
-import { STATUT_DOCUMENT_LABELS, STATUT_DOCUMENT_TONE } from '@/lib/labels';
-import { updateDocumentField, updateLigneDocumentField, deleteLigneDocument, deleteDevis } from '../../../actions';
+import {
+  STATUT_DOCUMENT_LABELS,
+  STATUT_DOCUMENT_TONE,
+  STATUT_CREANCE_LABELS,
+  STATUT_CREANCE_TONE,
+} from '@/lib/labels';
+import {
+  updateDocumentField,
+  updateLigneDocumentField,
+  deleteLigneDocument,
+  deleteDevis,
+  deletePaiement,
+} from '../../../actions';
 import { resolveFileUrl } from '@/lib/supabase/admin';
-import { computeTotaux } from '@/lib/facturation';
+import { computeTotaux, computeCreance } from '@/lib/facturation';
 import { EditableField } from '@/components/EditableField';
 import { DeleteButton } from '@/components/DeleteButton';
 import { TagSelect } from '@/components/ui/TagSelect';
+import { Tag } from '@/components/ui/Tag';
 import { Card } from '@/components/ui/Card';
 import { AddLigneDevisRow } from '@/components/AddLigneDevisRow';
+import { AddPaiementRow } from '@/components/AddPaiementRow';
 
 const statutOptions = Object.entries(STATUT_DOCUMENT_LABELS).map(([value, label]) => ({ value, label }));
 
@@ -32,7 +45,10 @@ export default async function DocumentFinancierPage({
   const [document, projet] = await Promise.all([
     prisma.document.findUnique({
       where: { id: docId },
-      include: { lignes: { orderBy: { ordre: 'asc' } } },
+      include: {
+        lignes: { orderBy: { ordre: 'asc' } },
+        paiements: { orderBy: { date: 'desc' } },
+      },
     }),
     prisma.projet.findUnique({ where: { id }, select: { id: true, nom: true, code: true } }),
   ]);
@@ -55,6 +71,21 @@ export default async function DocumentFinancierPage({
     document.tauxTva !== null ? Number(document.tauxTva) : null,
     document.remisePct !== null ? Number(document.remisePct) : null
   );
+
+  // Créance : seulement pour une FACTURE — un devis n'est pas encaissable.
+  const paiements = document.paiements.map((p) => ({
+    id: p.id,
+    montant: Number(p.montant),
+    date: p.date,
+    methode: p.methode,
+  }));
+  const creance =
+    document.type === 'FACTURE'
+      ? computeCreance(totaux.ttc, paiements, document.dateEcheance)
+      : null;
+  const echeanceRaw = document.dateEcheance
+    ? document.dateEcheance.toISOString().slice(0, 10)
+    : '';
 
   return (
     <div className="max-w-3xl">
@@ -192,6 +223,72 @@ export default async function DocumentFinancierPage({
           </div>
         </div>
       </Card>
+
+      {creance && (
+        <Card padded={false} className="mt-6 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xs uppercase tracking-[0.08em] text-muted">Règlement</h2>
+              <Tag tone={STATUT_CREANCE_TONE[creance.statut] ?? 'neutral'}>
+                {STATUT_CREANCE_LABELS[creance.statut]}
+              </Tag>
+              {creance.joursDeRetard !== null && creance.joursDeRetard > 0 && (
+                <span className="text-xs text-muted">{creance.joursDeRetard} j de retard</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted">
+              Échéance
+              <EditableField
+                value={echeanceRaw}
+                onSave={updateDocumentField.bind(null, document.id, 'dateEcheance')}
+                type="date"
+                placeholder="Non fixée"
+                className="w-32"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
+            <span className="text-muted">
+              Encaissé{' '}
+              <span className="tabular-nums text-fg">{formatDZD(creance.montantPaye)}</span>
+            </span>
+            <span className="text-muted">
+              Reste dû{' '}
+              <span className="tabular-nums text-fg">{formatDZD(creance.reste)}</span>
+            </span>
+          </div>
+
+          <table className="mt-4 w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-line text-[10px] uppercase tracking-wide text-muted">
+                <th className="w-[30%] pb-2 pr-2 font-normal">Date</th>
+                <th className="w-[30%] pb-2 pr-2 font-normal">Méthode</th>
+                <th className="w-[30%] pb-2 pr-2 text-right font-normal">Montant</th>
+                <th className="w-[10%] pb-2 font-normal" />
+              </tr>
+            </thead>
+            <tbody>
+              {paiements.map((p) => (
+                <tr key={p.id} className="border-b border-line">
+                  <td className="py-1.5 text-muted">
+                    {new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(p.date)}
+                  </td>
+                  <td className="py-1.5 text-muted">{p.methode || '—'}</td>
+                  <td className="py-1.5 text-right tabular-nums text-fg">{formatDZD(p.montant)}</td>
+                  <td className="py-1.5">
+                    <DeleteButton
+                      action={deletePaiement.bind(null, p.id)}
+                      confirmMessage="Supprimer ce paiement ?"
+                    />
+                  </td>
+                </tr>
+              ))}
+              <AddPaiementRow documentId={document.id} resteDu={creance.reste} />
+            </tbody>
+          </table>
+        </Card>
+      )}
 
       <section className="mt-8">
         <DeleteButton

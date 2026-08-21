@@ -75,10 +75,20 @@ export async function addDocument(formData: FormData) {
   redirect(`/projets/${projetId}`);
 }
 
-const DOCUMENT_EDITABLE_FIELDS = ['type', 'numero', 'objet', 'statut', 'url', 'tauxTva', 'remisePct'] as const;
+const DOCUMENT_EDITABLE_FIELDS = [
+  'type',
+  'numero',
+  'objet',
+  'statut',
+  'url',
+  'tauxTva',
+  'remisePct',
+  'dateEcheance',
+] as const;
 type DocumentField = (typeof DOCUMENT_EDITABLE_FIELDS)[number];
 const DOCUMENT_REQUIRED_FIELDS = new Set(['type', 'statut']);
 const DOCUMENT_DECIMAL_FIELDS = new Set(['tauxTva', 'remisePct']);
+const DOCUMENT_DATE_FIELDS = new Set(['dateEcheance']);
 
 // Édite aussi tauxTva/remisePct depuis cette session — donnée financière comme le reste des
 // actions Document ci-dessous, d'où le requireAdmin() qui manquait jusqu'ici.
@@ -89,10 +99,14 @@ export async function updateDocumentField(id: string, field: DocumentField, valu
   const trimmed = value.trim();
   if (!trimmed && DOCUMENT_REQUIRED_FIELDS.has(field)) throw new Error('Champ requis');
 
-  let parsed: string | number | null = trimmed || null;
+  let parsed: string | number | Date | null = trimmed || null;
   if (parsed !== null && DOCUMENT_DECIMAL_FIELDS.has(field)) {
     parsed = Number(trimmed);
     if (Number.isNaN(parsed)) throw new Error('Valeur invalide');
+  }
+  if (parsed !== null && DOCUMENT_DATE_FIELDS.has(field)) {
+    parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) throw new Error('Date invalide');
   }
 
   const document = await prisma.document.update({
@@ -216,6 +230,52 @@ export async function deleteLigneDocument(id: string) {
 // la page en cours — sans redirect, DeleteButton laisserait l'utilisateur sur une route qui
 // n'existe plus. Nom conservé (deleteDevis) même si elle sert aussi aux Factures — pas de raison
 // de renommer un identifiant interne pour ça.
+// ---------------------------------------------------------------------------
+// Paiements — encaissements réels sur une FACTURE. L'état de la créance n'est jamais écrit :
+// il se recalcule à partir de ces lignes (src/lib/facturation.ts, computeCreance).
+// ---------------------------------------------------------------------------
+
+export async function addPaiement(documentId: string, montant: string, date: string, methode: string) {
+  await requireAdmin();
+  const parsedMontant = Number(montant);
+  if (!montant.trim() || Number.isNaN(parsedMontant) || parsedMontant <= 0) {
+    throw new Error('Montant invalide');
+  }
+
+  const parsedDate = date.trim() ? new Date(date) : new Date();
+  if (Number.isNaN(parsedDate.getTime())) throw new Error('Date invalide');
+
+  const paiement = await prisma.paiement.create({
+    data: {
+      documentId,
+      montant: parsedMontant,
+      date: parsedDate,
+      methode: methode.trim() || null,
+    },
+    include: { document: { select: { projetId: true } } },
+  });
+
+  if (paiement.document.projetId) {
+    revalidatePath(`/projets/${paiement.document.projetId}/documents/${documentId}`);
+    revalidatePath(`/projets/${paiement.document.projetId}`);
+  }
+  revalidatePath('/finance');
+}
+
+export async function deletePaiement(id: string) {
+  await requireAdmin();
+  const paiement = await prisma.paiement.delete({
+    where: { id },
+    include: { document: { select: { projetId: true } } },
+  });
+
+  if (paiement.document.projetId) {
+    revalidatePath(`/projets/${paiement.document.projetId}/documents/${paiement.documentId}`);
+    revalidatePath(`/projets/${paiement.document.projetId}`);
+  }
+  revalidatePath('/finance');
+}
+
 export async function deleteDevis(id: string, projetId: string) {
   await requireAdmin();
   await prisma.document.delete({ where: { id } });
@@ -409,6 +469,7 @@ export async function deleteTache(id: string) {
 }
 
 export async function createDepenseInline(projetId: string, categorie: string, montant: string) {
+  await requireAdmin();
   const trimmedCategorie = categorie.trim();
   const parsedMontant = Number(montant);
   if (!trimmedCategorie || !montant.trim() || Number.isNaN(parsedMontant)) {
@@ -423,6 +484,38 @@ export async function createDepenseInline(projetId: string, categorie: string, m
   revalidatePath('/finance');
 }
 
+// Variante globale (page Finance) : le projet devient optionnel — `Depense.projetId` est nullable
+// depuis toujours (dépense générale, non imputée à un projet), mais rien ne permettait de la
+// saisir jusqu'ici, la seule entrée passant par un projet. Accepte aussi une date explicite.
+export async function createDepenseGlobale(
+  projetId: string,
+  categorie: string,
+  montant: string,
+  date: string
+) {
+  await requireAdmin();
+  const trimmedCategorie = categorie.trim();
+  const parsedMontant = Number(montant);
+  if (!trimmedCategorie || !montant.trim() || Number.isNaN(parsedMontant)) {
+    throw new Error('Champs requis manquants');
+  }
+
+  const parsedDate = date.trim() ? new Date(date) : new Date();
+  if (Number.isNaN(parsedDate.getTime())) throw new Error('Date invalide');
+
+  await prisma.depense.create({
+    data: {
+      projetId: projetId.trim() || null,
+      categorie: trimmedCategorie,
+      montant: parsedMontant,
+      date: parsedDate,
+    },
+  });
+
+  if (projetId.trim()) revalidatePath(`/projets/${projetId}`);
+  revalidatePath('/finance');
+}
+
 const DEPENSE_EDITABLE_FIELDS = ['categorie', 'montant', 'date', 'notes'] as const;
 type DepenseField = (typeof DEPENSE_EDITABLE_FIELDS)[number];
 const DEPENSE_DATE_FIELDS = new Set(['date']);
@@ -430,6 +523,7 @@ const DEPENSE_DECIMAL_FIELDS = new Set(['montant']);
 const DEPENSE_REQUIRED_FIELDS = new Set(['categorie', 'montant', 'date']);
 
 export async function updateDepenseField(id: string, field: DepenseField, value: string) {
+  await requireAdmin();
   if (!DEPENSE_EDITABLE_FIELDS.includes(field)) throw new Error('Champ invalide');
 
   const trimmed = value.trim();
@@ -449,6 +543,7 @@ export async function updateDepenseField(id: string, field: DepenseField, value:
 }
 
 export async function deleteDepense(id: string) {
+  await requireAdmin();
   const depense = await prisma.depense.delete({ where: { id } });
   if (depense.projetId) revalidatePath(`/projets/${depense.projetId}`);
   revalidatePath('/finance');

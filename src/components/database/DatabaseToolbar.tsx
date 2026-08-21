@@ -36,11 +36,16 @@ export function DatabaseToolbar<T>({
   properties,
   views = ['list'],
   createSlot,
+  showSearch = true,
 }: {
   view: DatabaseView<T>;
   properties: PropertyDef<T>[];
   views?: ViewKind[];
   createSlot?: React.ReactNode;
+  // Désactivable là où la liste est déjà cadrée par son contexte : dans un projet, les tâches
+  // affichées sont celles de ce projet-là, assez peu nombreuses pour se parcourir à l'œil.
+  // La page /taches (toutes tâches, tous projets) garde la recherche.
+  showSearch?: boolean;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const { state, update } = view;
@@ -54,13 +59,15 @@ export function DatabaseToolbar<T>({
   return (
     <div className="flex flex-wrap items-center gap-x-1 gap-y-2 py-3">
       {/* Recherche — contrôle primaire, reste visible */}
-      <input
-        value={state.search}
-        onChange={(e) => update({ search: e.target.value })}
-        placeholder="Rechercher…"
-        aria-label="Rechercher"
-        className="mr-2 min-w-[8rem] max-w-xs flex-1 border border-line bg-bg px-2 py-1.5 text-sm text-fg placeholder:text-muted transition-colors duration-fast focus:border-accent focus:outline-none"
-      />
+      {showSearch && (
+        <input
+          value={state.search}
+          onChange={(e) => update({ search: e.target.value })}
+          placeholder="Rechercher…"
+          aria-label="Rechercher"
+          className="mr-2 min-w-[8rem] max-w-xs flex-1 border border-line bg-bg px-2 py-1.5 text-sm text-fg placeholder:text-muted transition-colors duration-fast focus:border-accent focus:outline-none"
+        />
+      )}
 
       {/* Sélecteur de vue — primaire, en toutes lettres */}
       {views.length > 1 && (
