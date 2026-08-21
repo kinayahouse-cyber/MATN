@@ -250,6 +250,7 @@ export function ProjetsBoard({
       )}
 
       {state.view === 'list' ? (
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="divide-x divide-line border-b border-muted text-xs uppercase tracking-wide text-muted">
@@ -290,6 +291,7 @@ export function ProjetsBoard({
             {!readOnly && !groups && <AddProjetRow clients={clients} />}
           </tbody>
         </table>
+        </div>
       ) : (
         <div className="flex gap-6 overflow-x-auto pb-2">
           {boardGroups.map((g, i) => (

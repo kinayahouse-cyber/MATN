@@ -339,6 +339,7 @@ export function TacheList({
       ) : state.view === 'timeline' ? (
         <TacheTimeline taches={filtered} utilisateurs={utilisateurs} todayISO={todayISO} />
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="divide-x divide-line border-b border-line text-xs uppercase tracking-wide text-muted">
@@ -369,14 +370,17 @@ export function TacheList({
               : filtered.map(renderRow)}
           </tbody>
         </table>
+        </div>
       )}
 
       {state.view !== 'calendar' && (
+        <div className="overflow-x-auto">
         <table className="w-full">
           <tbody>
             <AddTacheRow projetId={projetId} utilisateurs={utilisateurs} />
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

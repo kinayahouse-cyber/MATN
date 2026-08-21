@@ -224,6 +224,7 @@ export function FinanceBoard({
         {filtered.length === 0 ? (
           <p className="text-sm text-muted">Aucun projet.</p>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="divide-x divide-line border-b border-line text-xs uppercase tracking-wide text-muted">
@@ -251,6 +252,7 @@ export function FinanceBoard({
                 : filtered.map(renderRow)}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>
