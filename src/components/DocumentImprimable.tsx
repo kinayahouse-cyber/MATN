@@ -151,35 +151,52 @@ export function DocumentImprimable({
               </tr>
             ))}
           </tbody>
-        </table>
 
-        {/* Totaux — contrepoint des lignes : corps nettement plus grand, Total TTC en Bricolage
-            (font-display) puisque c'est le chiffre que le client retient. Les montants sont
-            alignés sur leur ligne de base commune (items-baseline). */}
-        <div className="ml-auto mt-8 w-96 max-w-full space-y-2.5">
-          <div className="flex items-baseline justify-between gap-6 text-lg text-muted">
-            <span>Sous-total HT</span>
-            <span className="whitespace-nowrap tabular-nums">{formatDZD(totaux.ht)}</span>
-          </div>
-          {!!remisePct && (
-            <div className="flex items-baseline justify-between gap-6 text-lg text-muted">
-              <span>Réduction ({remisePct}%)</span>
-              <span className="whitespace-nowrap tabular-nums">− {formatDZD(totaux.remise)}</span>
-            </div>
-          )}
-          <div className="flex items-baseline justify-between gap-6 text-lg text-muted">
-            <span>TVA ({tauxTva ?? 0}%)</span>
-            <span className="whitespace-nowrap tabular-nums">{formatDZD(totaux.tva)}</span>
-          </div>
-          {/* Le libellé reste sobre, seul le montant passe en grand : à taille égale les deux
-              se disputaient la largeur et « Total TTC » repassait à la ligne. */}
-          <div className="flex items-baseline justify-between gap-6 border-t border-line-strong pt-3">
-            <span className="text-sm uppercase tracking-[0.12em] text-fg">Total TTC</span>
-            <span className="whitespace-nowrap font-display text-4xl font-bold tracking-tight text-fg tabular-nums">
-              {formatDZD(totaux.ttc)}
-            </span>
-          </div>
-        </div>
+          {/* Les totaux sont des lignes du même tableau (tfoot), pas un bloc flottant à côté :
+              leurs montants tombent ainsi exactement dans la colonne Montant des articles, et
+              tout le tableau partage une seule grille de colonnes alignée en bas. */}
+          <tfoot className="align-bottom">
+            <tr>
+              <td colSpan={3} className="pt-6 pr-4 text-right align-bottom text-lg text-muted">
+                Sous-total HT
+              </td>
+              <td className="pt-6 pl-4 text-right align-bottom text-lg tabular-nums text-muted">
+                {formatDZD(totaux.ht)}
+              </td>
+            </tr>
+            {!!remisePct && (
+              <tr>
+                <td colSpan={3} className="pt-2.5 pr-4 text-right align-bottom text-lg text-muted">
+                  Réduction ({remisePct}%)
+                </td>
+                <td className="pt-2.5 pl-4 text-right align-bottom text-lg tabular-nums text-muted">
+                  − {formatDZD(totaux.remise)}
+                </td>
+              </tr>
+            )}
+            <tr>
+              <td colSpan={3} className="pb-3 pt-2.5 pr-4 text-right align-bottom text-lg text-muted">
+                TVA ({tauxTva ?? 0}%)
+              </td>
+              <td className="pb-3 pt-2.5 pl-4 text-right align-bottom text-lg tabular-nums text-muted">
+                {formatDZD(totaux.tva)}
+              </td>
+            </tr>
+            {/* Le libellé reste sobre, seul le montant passe en grand : à taille égale les deux
+                se disputaient la largeur et « Total TTC » repassait à la ligne. */}
+            <tr className="border-t border-line-strong">
+              <td
+                colSpan={3}
+                className="pt-3 pr-4 text-right align-bottom text-sm uppercase tracking-[0.12em] text-fg"
+              >
+                Total TTC
+              </td>
+              <td className="whitespace-nowrap pt-3 pl-4 text-right align-bottom font-display text-4xl font-bold tracking-tight text-fg tabular-nums">
+                {formatDZD(totaux.ttc)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
 
         {/* Montant en lettres */}
         <p className="mt-8 border-t border-b border-line/30 py-3 text-sm italic text-fg">
@@ -215,7 +232,7 @@ export function DocumentImprimable({
             <img
               src={agence.logoUrl}
               alt={agence.nom ?? 'Logo'}
-              className="mx-auto w-full max-w-[420px] object-contain"
+              className="block w-full object-contain"
             />
           )}
           {(agence.email || agence.telephone) && (
