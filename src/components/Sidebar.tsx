@@ -13,6 +13,7 @@ import {
   IconKnowledge,
   IconSettings,
 } from '@/components/icons/nav';
+import { IconMarque } from '@/components/icons/marque';
 import type { Role } from '@prisma/client';
 
 // IA alignée sur le wireframe Project Workspace (Figma, 08/08) : Décisions/Documents/Recherche
@@ -43,8 +44,8 @@ export function Sidebar({ role }: { role: Role }) {
           chaque fois. */}
       <nav className="hidden w-64 shrink-0 flex-col gap-6 p-4 md:flex">
         <div className="flex items-center gap-2.5 px-2 pt-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent font-display text-sm text-bg">
-            M
+          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-bg">
+            <IconMarque className="h-4 w-4" />
           </span>
           <span className="font-display text-base tracking-tight text-fg">MATN</span>
         </div>

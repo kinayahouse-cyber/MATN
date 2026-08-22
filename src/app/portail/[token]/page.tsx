@@ -5,6 +5,7 @@ import { STADE_PROJET_LABELS } from '@/lib/labels';
 import { Card } from '@/components/ui/Card';
 import { Tag } from '@/components/ui/Tag';
 import { BriefReadOnly } from '@/components/BriefEditor';
+import { IconMarque } from '@/components/icons/marque';
 import type { BriefBlock } from '@/app/(app)/projets/actions';
 
 export const dynamic = 'force-dynamic';
@@ -55,8 +56,8 @@ export default async function PortailPage({ params }: { params: Promise<{ token:
   return (
     <div className="mx-auto min-h-screen max-w-2xl px-6 py-16">
       <div className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent font-display text-sm text-bg">
-          M
+        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-bg">
+          <IconMarque className="h-4 w-4" />
         </span>
         <span className="font-display text-base tracking-tight text-fg">MATN</span>
       </div>
