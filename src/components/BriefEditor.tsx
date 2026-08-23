@@ -2,6 +2,9 @@
 
 import { memo, useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { saveBrief, type BriefBlock, type BriefBlockType } from '@/app/(app)/projets/actions';
+import { renderInline } from '@/lib/inline-markdown';
+
+type Formatage = 'gras' | 'italique' | 'lien';
 
 const BLOCK_TYPES: { value: BriefBlockType; label: string }[] = [
   { value: 'h1', label: 'H1' },
@@ -47,7 +50,7 @@ export function BriefReadOnly({ blocks }: { blocks: BriefBlock[] }) {
     <div className="space-y-2">
       {blocks.map((b) => (
         <p key={b.id} className={BLOCK_CLASS[b.type]}>
-          {b.text}
+          {renderInline(b.text)}
         </p>
       ))}
     </div>
@@ -63,7 +66,14 @@ type RowProps = {
   onBackspaceEmpty: (id: string) => void;
   onBlur: () => void;
   onDeadClick: (id: string) => void;
+  onFormat: (id: string, formatage: Formatage) => void;
 };
+
+const BOUTONS_FORMATAGE: { formatage: Formatage; label: string; classe: string; titre: string }[] = [
+  { formatage: 'gras', label: 'G', classe: 'font-bold', titre: 'Gras (Ctrl+B)' },
+  { formatage: 'italique', label: 'I', classe: 'italic', titre: 'Italique (Ctrl+I)' },
+  { formatage: 'lien', label: 'L', classe: 'underline', titre: 'Lien (Ctrl+K)' },
+];
 
 // Une ligne par bloc, mémoïsée : taper dans un bloc ne doit re-rendre que ce bloc, pas les autres
 // — sinon chaque frappe recalcule tout le brief, ce qui se sent dès qu'il y a plusieurs blocs.
@@ -78,6 +88,7 @@ const BriefBlockRow = memo(function BriefBlockRow({
   onBackspaceEmpty,
   onBlur,
   onDeadClick,
+  onFormat,
 }: RowProps) {
   return (
     <div
@@ -89,24 +100,44 @@ const BriefBlockRow = memo(function BriefBlockRow({
         if (e.target === e.currentTarget) onDeadClick(block.id);
       }}
     >
-      <select
-        aria-label="Type de bloc"
-        value={block.type}
-        onChange={(e) => onType(block.id, e.target.value as BriefBlockType)}
-        // pointer-events-none tant qu'invisible : sans ça, un premier clic près du bord gauche du
-        // bloc (avant le texte du placeholder) tombe sur ce select plutôt que sur le textarea, et
-        // tout ce qui est tapé ensuite disparaît silencieusement dedans. Révélé uniquement par
-        // group-focus-within (le textarea a le focus), jamais par group-hover : un simple survol
-        // de la souris en route vers le textarea déclenche group-hover exactement au moment du
-        // clic, ce qui réactivait le piège.
-        className="pointer-events-none mt-1 w-[3.25rem] shrink-0 rounded-md border border-line bg-bg px-1 py-0.5 text-[10px] uppercase tracking-wide text-muted opacity-0 transition-opacity duration-fast group-focus-within:pointer-events-auto group-focus-within:opacity-100"
-      >
-        {BLOCK_TYPES.map((t) => (
-          <option key={t.value} value={t.value}>
-            {t.label}
-          </option>
-        ))}
-      </select>
+      {/* pointer-events-none tant qu'invisible : sans ça, un premier clic près du bord gauche du
+          bloc (avant le texte du placeholder) tombe sur ce panneau plutôt que sur le textarea, et
+          tout ce qui est tapé ensuite disparaît silencieusement dedans. Révélé uniquement par
+          group-focus-within (le textarea a le focus), jamais par group-hover : un simple survol
+          de la souris en route vers le textarea déclenche group-hover exactement au moment du
+          clic, ce qui réactivait le piège. */}
+      <div className="pointer-events-none mt-1 flex w-[3.25rem] shrink-0 flex-col gap-1 opacity-0 transition-opacity duration-fast group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+        <select
+          aria-label="Type de bloc"
+          value={block.type}
+          onChange={(e) => onType(block.id, e.target.value as BriefBlockType)}
+          className="w-full rounded-md border border-line bg-bg px-1 py-0.5 text-[10px] uppercase tracking-wide text-muted"
+        >
+          {BLOCK_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+
+        <div className="flex gap-0.5">
+          {BOUTONS_FORMATAGE.map((b) => (
+            <button
+              key={b.formatage}
+              type="button"
+              title={b.titre}
+              // mousedown plutôt que click : sans preventDefault, le textarea perd le focus (et sa
+              // sélection) avant que le clic n'atteigne ce bouton, et le formatage n'a plus rien à
+              // envelopper.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onFormat(block.id, b.formatage)}
+              className={`flex-1 rounded border border-line bg-bg py-0.5 text-[10px] leading-none text-muted transition-colors duration-fast hover:border-line-strong hover:text-fg ${b.classe}`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Auto-grow en CSS pur (globals.css) : pas de scrollHeight lu en JS à chaque frappe. */}
       <div className={`grow-wrap w-full ${BLOCK_CLASS[block.type]}`} data-replicated-value={block.text}>
@@ -118,6 +149,22 @@ const BriefBlockRow = memo(function BriefBlockRow({
           onChange={(e) => onText(block.id, e.target.value)}
           onBlur={onBlur}
           onKeyDown={(e) => {
+            const raccourci = e.metaKey || e.ctrlKey;
+            if (raccourci && e.key.toLowerCase() === 'b') {
+              e.preventDefault();
+              onFormat(block.id, 'gras');
+              return;
+            }
+            if (raccourci && e.key.toLowerCase() === 'i') {
+              e.preventDefault();
+              onFormat(block.id, 'italique');
+              return;
+            }
+            if (raccourci && e.key.toLowerCase() === 'k') {
+              e.preventDefault();
+              onFormat(block.id, 'lien');
+              return;
+            }
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               onEnter(block.id);
@@ -152,7 +199,7 @@ export function BriefEditor({
     initialBlocks.length > 0 ? initialBlocks : [{ id: 'brief-0', type: 'h2', text: '' }]
   );
   const [pending, startTransition] = useTransition();
-  const focusId = useRef<string | null>(null);
+  const focusId = useRef<{ id: string; debut?: number; fin?: number } | null>(null);
   const refs = useRef(new Map<string, HTMLTextAreaElement>());
   // Miroir synchrone de `blocks`, lu par les callbacks stables (persist au blur) pour éviter
   // qu'elles n'aient `blocks` en dépendance — ça casserait la mémoïsation des lignes à chaque
@@ -160,10 +207,17 @@ export function BriefEditor({
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
 
-  // Après ajout/suppression, on rend le focus au bloc visé — sinon la frappe est interrompue.
+  // Après ajout/suppression/formatage, on rend le focus au bloc visé — sinon la frappe est
+  // interrompue. Le formatage restaure en plus la sélection (texte enveloppé par ** ou *), pour
+  // qu'on puisse continuer à taper par-dessus sans avoir à re-cliquer.
   useEffect(() => {
-    if (!focusId.current) return;
-    refs.current.get(focusId.current)?.focus();
+    const cible = focusId.current;
+    if (!cible) return;
+    const el = refs.current.get(cible.id);
+    if (el) {
+      el.focus();
+      if (cible.debut !== undefined && cible.fin !== undefined) el.setSelectionRange(cible.debut, cible.fin);
+    }
     focusId.current = null;
   });
 
@@ -201,7 +255,7 @@ export function BriefEditor({
       setBlocks((bs) => {
         const i = bs.findIndex((b) => b.id === id);
         const created = newBlock(bs[i]?.type.startsWith('h') ? 'p2' : bs[i]?.type);
-        focusId.current = created.id;
+        focusId.current = { id: created.id };
         return [...bs.slice(0, i + 1), created, ...bs.slice(i + 1)];
       }),
     []
@@ -212,11 +266,51 @@ export function BriefEditor({
       setBlocks((bs) => {
         if (bs.length === 1) return bs;
         const i = bs.findIndex((b) => b.id === id);
-        focusId.current = bs[i - 1]?.id ?? bs[i + 1]?.id ?? null;
+        const cibleId = bs[i - 1]?.id ?? bs[i + 1]?.id ?? null;
+        focusId.current = cibleId ? { id: cibleId } : null;
         const next = bs.filter((b) => b.id !== id);
         persist(next);
         return next;
       }),
+    [persist]
+  );
+
+  // Enveloppe la sélection courante (ou insère un mot-clé si rien n'est sélectionné) avec la
+  // syntaxe markdown-lite correspondante, puis persiste et restaure la sélection sur le texte
+  // enveloppé — pour pouvoir enchaîner sans re-cliquer.
+  const handleFormat = useCallback(
+    (id: string, formatage: Formatage) => {
+      const el = refs.current.get(id);
+      if (!el) return;
+      const { selectionStart, selectionEnd, value } = el;
+      const selection = value.slice(selectionStart, selectionEnd);
+
+      let inserted: string;
+      let debut: number;
+      let fin: number;
+
+      if (formatage === 'lien') {
+        const url = window.prompt('URL du lien :', 'https://');
+        if (!url) return;
+        const libelle = selection || 'texte';
+        inserted = `[${libelle}](${url})`;
+        debut = fin = selectionStart + inserted.length;
+      } else {
+        const marqueur = formatage === 'gras' ? '**' : '*';
+        const contenu = selection || 'texte';
+        inserted = `${marqueur}${contenu}${marqueur}`;
+        debut = selectionStart + marqueur.length;
+        fin = debut + contenu.length;
+      }
+
+      const texte = value.slice(0, selectionStart) + inserted + value.slice(selectionEnd);
+      setBlocks((bs) => {
+        const next = bs.map((b) => (b.id === id ? { ...b, text: texte } : b));
+        persist(next);
+        return next;
+      });
+      focusId.current = { id, debut, fin };
+    },
     [persist]
   );
 
@@ -251,6 +345,7 @@ export function BriefEditor({
             onBackspaceEmpty={handleBackspaceEmpty}
             onBlur={handleBlur}
             onDeadClick={handleDeadClick}
+            onFormat={handleFormat}
           />
         ))}
       </div>
