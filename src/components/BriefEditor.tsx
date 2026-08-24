@@ -62,6 +62,12 @@ const COMMANDES: Commande[] = [
   { type: 'p2', label: 'Texte', description: 'Paragraphe simple', apercu: '¶' },
 ];
 
+// Référence stable pour les blocs sans menu ouvert : un `[]` littéral recréé à chaque rendu casse
+// le memo() de BriefBlockRow pour TOUS les blocs à chaque frappe dans N'IMPORTE LEQUEL d'entre eux
+// (nouvelle référence de prop à chaque fois), ce qui re-rend tout le brief à chaque caractère tapé
+// au lieu du seul bloc concerné. Une constante partagée évite cette casse de mémoïsation.
+const AUCUNE_COMMANDE: Commande[] = [];
+
 type RowProps = {
   block: BriefBlock;
   refSetter: (el: HTMLTextAreaElement | null) => void;
@@ -384,10 +390,9 @@ export function BriefEditor({
       <div className="space-y-1">
         {blocks.map((block) => {
           const ouvert = menuId === block.id;
-          const requete = ouvert ? block.text.slice(1).toLowerCase() : '';
           const commandesFiltrees = ouvert
-            ? COMMANDES.filter((c) => c.label.toLowerCase().includes(requete))
-            : [];
+            ? COMMANDES.filter((c) => c.label.toLowerCase().includes(block.text.slice(1).toLowerCase()))
+            : AUCUNE_COMMANDE;
 
           return (
             <BriefBlockRow
@@ -401,7 +406,10 @@ export function BriefEditor({
               onFormat={handleFormat}
               menuOuvert={ouvert}
               commandesFiltrees={commandesFiltrees}
-              indexSelection={indexSelection}
+              // Idem pour indexSelection : figée à 0 pour les blocs fermés (pour qui elle n'a de
+              // toute façon aucun sens) plutôt que de propager la vraie valeur, qui change à
+              // chaque flèche pressée dans le menu d'un AUTRE bloc.
+              indexSelection={ouvert ? indexSelection : 0}
               setIndexSelection={setIndexSelection}
               onChoisirCommande={handleChoisirCommande}
               onFermerMenu={handleFermerMenu}
