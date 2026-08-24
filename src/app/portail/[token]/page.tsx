@@ -5,6 +5,7 @@ import { STADE_PROJET_LABELS } from '@/lib/labels';
 import { Card } from '@/components/ui/Card';
 import { Tag } from '@/components/ui/Tag';
 import { BriefReadOnly } from '@/components/BriefEditor';
+import { MoodboardReadOnly } from '@/components/Moodboard';
 import { IconMarque } from '@/components/icons/marque';
 import type { BriefBlock } from '@/app/(app)/projets/actions';
 
@@ -38,6 +39,13 @@ export default async function PortailPage({ params }: { params: Promise<{ token:
         orderBy: { createdAt: 'desc' },
         select: { id: true, numero: true, statut: true, url: true, createdAt: true },
       },
+      // Seules les images marquées moodboard sortent ici : les autres assets sont des fichiers de
+      // production internes, que le client n'a pas à voir.
+      assets: {
+        where: { moodboard: true },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, url: true, nom: true, legende: true },
+      },
     },
   });
 
@@ -50,7 +58,16 @@ export default async function PortailPage({ params }: { params: Promise<{ token:
       )
     : [];
 
-  const livrableUrls = await Promise.all(projet.documents.map((d) => resolveFileUrl(d.url)));
+  const [livrableUrls, moodboardUrls] = await Promise.all([
+    Promise.all(projet.documents.map((d) => resolveFileUrl(d.url))),
+    Promise.all(projet.assets.map((a) => resolveFileUrl(a.url))),
+  ]);
+  const imagesMoodboard = projet.assets.map((a, i) => ({
+    id: a.id,
+    url: moodboardUrls[i],
+    nom: a.nom,
+    legende: a.legende,
+  }));
   const echeance = formatEcheance(projet.dateFinPrevue);
 
   return (
@@ -77,6 +94,17 @@ export default async function PortailPage({ params }: { params: Promise<{ token:
           <BriefReadOnly blocks={briefBlocks} />
         </div>
       </Card>
+
+      {/* Masquée tant qu'aucune référence n'est déposée : une planche vide n'apprend rien au
+          client et donne l'impression d'un projet inabouti. */}
+      {imagesMoodboard.length > 0 && (
+        <Card padded={false} className="mt-6 p-6">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Moodboard</p>
+          <div className="mt-3">
+            <MoodboardReadOnly images={imagesMoodboard} />
+          </div>
+        </Card>
+      )}
 
       <Card padded={false} className="mt-6 p-6">
         <p className="text-[10px] uppercase tracking-[0.2em] text-muted">Livrables</p>

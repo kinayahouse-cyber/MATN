@@ -35,6 +35,7 @@ import { AddProjetMembre } from '@/components/AddProjetMembre';
 import { TacheList } from '@/components/TacheList';
 import { ProjectInfoCard } from '@/components/ProjectInfoCard';
 import { BriefEditor, BriefReadOnly } from '@/components/BriefEditor';
+import { Moodboard, MoodboardReadOnly } from '@/components/Moodboard';
 import type { BriefBlock } from '../actions';
 import { ProjectFinance } from '@/components/ProjectFinance';
 import { ClientPortalCard } from '@/components/ClientPortalCard';
@@ -130,6 +131,14 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
   const documentUrlById = new Map(projet.documents.map((doc, i) => [doc.id, documentUrls[i]]));
   const assetUrlById = new Map(projet.assets.map((asset, i) => [asset.id, assetUrls[i]]));
 
+  // Les deux vivent dans la même table : l'onglet Assets reste les fichiers de production, le
+  // moodboard ne montre que les images de référence — sans ce partage, déposer une planche
+  // d'inspiration noierait les livrables internes.
+  const assetsProduction = projet.assets.filter((a) => !a.moodboard);
+  const imagesMoodboard = projet.assets
+    .filter((a) => a.moodboard)
+    .map((a) => ({ id: a.id, url: assetUrlById.get(a.id) ?? null, nom: a.nom, legende: a.legende }));
+
   const totalDepenses = projet.depenses.reduce((sum, d) => sum + Number(d.montant), 0);
   const echeance = formatEcheance(projet.dateFinPrevue, projet.stade);
   // Calculé côté serveur puis passé en prop : le calendrier client doit partir du même jour que
@@ -177,8 +186,8 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
   // dans un ordre historique, on les réordonne ici plutôt que de déplacer de gros blocs JSX.
   // Collaborateur : Files + Assets seulement (« just for the task and project files ») — Équipe,
   // Dépenses, Notes et Contacts filtrés juste avant le rendu.
-  const TAB_ORDER = ['files', 'equipe', 'depenses', 'notes', 'assets', 'contacts'];
-  const visibleTabIds = canManage ? TAB_ORDER : ['files', 'assets'];
+  const TAB_ORDER = ['files', 'moodboard', 'equipe', 'depenses', 'notes', 'assets', 'contacts'];
+  const visibleTabIds = canManage ? TAB_ORDER : ['files', 'moodboard', 'assets'];
 
   const tabs = [
     {
@@ -403,15 +412,24 @@ export default async function ProjetPage({ params }: { params: Promise<{ id: str
       ),
     },
     {
+      id: 'moodboard',
+      label: 'Moodboard',
+      content: canManage ? (
+        <Moodboard projetId={projet.id} images={imagesMoodboard} />
+      ) : (
+        <MoodboardReadOnly images={imagesMoodboard} />
+      ),
+    },
+    {
       id: 'assets',
       label: 'Assets',
       content: (
         <div>
-          {projet.assets.length === 0 ? (
+          {assetsProduction.length === 0 ? (
             <p className="text-sm text-muted">Aucun asset.</p>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {projet.assets.map((asset) => {
+              {assetsProduction.map((asset) => {
                 const resolvedUrl = assetUrlById.get(asset.id);
                 return (
                   <div key={asset.id} className="border border-line">

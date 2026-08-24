@@ -323,6 +323,58 @@ export async function deleteAsset(id: string) {
   revalidatePath(`/projets/${asset.projetId}`);
 }
 
+// ---------------------------------------------------------------------------
+// Moodboard — images de référence, visibles aussi par le client dans le portail
+// ---------------------------------------------------------------------------
+
+/**
+ * Ajoute une ou plusieurs images au moodboard. Le multi-fichiers est le cas normal ici : on
+ * constitue une planche en déposant une série d'images d'un coup, pas une par une.
+ *
+ * Les fichiers sont téléversés en parallèle mais insérés en une seule requête : si un envoi
+ * échoue, rien n'est enregistré, plutôt qu'une planche à moitié remplie sans indication de ce
+ * qui manque.
+ */
+export async function addMoodboardImages(formData: FormData) {
+  await requireAdmin();
+
+  const projetId = String(formData.get('projetId') ?? '').trim();
+  if (!projetId) throw new Error('Projet requis');
+
+  const fichiers = formData
+    .getAll('files')
+    .filter((f): f is File => f instanceof File && f.size > 0 && f.type.startsWith('image/'));
+  if (fichiers.length === 0) throw new Error('Aucune image valide');
+
+  const urls = await Promise.all(
+    fichiers.map((f) => uploadToStorage(f, `projets/${projetId}/moodboard`))
+  );
+
+  await prisma.asset.createMany({
+    data: urls.map((url, i) => ({
+      projetId,
+      type: 'IMAGE' as TypeAsset,
+      nom: fichiers[i].name,
+      url,
+      moodboard: true,
+    })),
+  });
+
+  revalidatePath(`/projets/${projetId}`);
+}
+
+export async function updateMoodboardLegende(id: string, valeur: string) {
+  await requireAdmin();
+  const trimmed = valeur.trim();
+  const asset = await prisma.asset.update({
+    where: { id },
+    // Une légende effacée redevient NULL plutôt qu'une chaîne vide : le rendu teste la présence
+    // d'une légende, pas sa longueur.
+    data: { legende: trimmed || null },
+  });
+  revalidatePath(`/projets/${asset.projetId}`);
+}
+
 const PROJET_EDITABLE_FIELDS = [
   'nom',
   'description',

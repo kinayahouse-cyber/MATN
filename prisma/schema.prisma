@@ -471,8 +471,17 @@ model Asset {
   url                String
   sourceGenerateurIa Boolean   @default(false) // crochet réservé : génération IA nodale, non implémentée
 
+  // Distingue les images de référence (planche d'inspiration, montrée au client dans le portail)
+  // des fichiers de production internes. Un drapeau plutôt qu'un modèle séparé : l'upload, la
+  // résolution d'URL signée et la suppression sont exactement les mêmes, seule l'intention change.
+  moodboard Boolean @default(false)
+  // Légende libre affichée sous l'image du moodboard — la référence visuelle a souvent besoin
+  // d'un mot d'explication ("direction lumière", "à éviter") que `nom` ne porte pas.
+  legende   String?
+
   createdAt DateTime @default(now())
 
+  @@index([projetId, moodboard])
   @@map("assets")
 }
 
