@@ -3,6 +3,7 @@
 import { memo, useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { saveBrief, type BriefBlock, type BriefBlockType } from '@/app/(app)/projets/actions';
 import { renderInline } from '@/lib/inline-markdown';
+import { positionCaret } from '@/lib/caret-textarea';
 
 type Formatage = 'gras' | 'italique' | 'lien';
 
@@ -16,6 +17,7 @@ const BLOCK_CLASS: Record<BriefBlockType, string> = {
   p1: 'text-[15px] leading-relaxed text-fg',
   p2: 'text-sm leading-relaxed text-fg',
   p3: 'text-xs leading-relaxed text-muted',
+  li: 'text-sm leading-relaxed text-fg',
 };
 
 const PLACEHOLDER: Record<BriefBlockType, string> = {
@@ -25,6 +27,7 @@ const PLACEHOLDER: Record<BriefBlockType, string> = {
   p1: 'Écrivez, ou tapez « / » pour les commandes',
   p2: 'Écrivez, ou tapez « / » pour les commandes',
   p3: 'Écrivez, ou tapez « / » pour les commandes',
+  li: 'Élément de liste',
 };
 
 const newBlock = (type: BriefBlockType = 'p2'): BriefBlock => ({
@@ -39,13 +42,33 @@ const newBlock = (type: BriefBlockType = 'p2'): BriefBlock => ({
 // lecteur qui n'en a pas l'usage.
 export function BriefReadOnly({ blocks }: { blocks: BriefBlock[] }) {
   if (blocks.length === 0) return <p className="text-sm text-muted">Aucun brief.</p>;
+
+  // Les puces consécutives sont regroupées en une seule <ul> : une suite de <ul> à un élément
+  // serait valide mais casserait l'espacement de la liste et sa sémantique pour un lecteur d'écran.
+  const groupes: (BriefBlock | BriefBlock[])[] = [];
+  for (const b of blocks) {
+    const dernier = groupes[groupes.length - 1];
+    if (b.type === 'li' && Array.isArray(dernier)) dernier.push(b);
+    else groupes.push(b.type === 'li' ? [b] : b);
+  }
+
   return (
     <div className="space-y-2">
-      {blocks.map((b) => (
-        <p key={b.id} className={BLOCK_CLASS[b.type]}>
-          {renderInline(b.text)}
-        </p>
-      ))}
+      {groupes.map((g, i) =>
+        Array.isArray(g) ? (
+          <ul key={g[0].id} className="list-disc space-y-1 pl-5">
+            {g.map((b) => (
+              <li key={b.id} className={BLOCK_CLASS.li}>
+                {renderInline(b.text)}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p key={g.id ?? i} className={BLOCK_CLASS[g.type]}>
+            {renderInline(g.text)}
+          </p>
+        )
+      )}
     </div>
   );
 }
@@ -60,6 +83,7 @@ const COMMANDES: Commande[] = [
   { type: 'h2', label: 'Titre 2', description: 'Titre de sous-section', apercu: 'H2' },
   { type: 'h3', label: 'Titre 3', description: 'Petit intertitre', apercu: 'H3' },
   { type: 'p2', label: 'Texte', description: 'Paragraphe simple', apercu: '¶' },
+  { type: 'li', label: 'Liste à puces', description: 'Énumération', apercu: '•' },
 ];
 
 // Référence stable pour les blocs sans menu ouvert : un `[]` littéral recréé à chaque rendu casse
@@ -82,7 +106,15 @@ type RowProps = {
   setIndexSelection: (maj: (i: number) => number) => void;
   onChoisirCommande: (id: string, type: BriefBlockType) => void;
   onFermerMenu: (id: string) => void;
+  onSelection: (id: string) => void;
+  bulle: { gauche: number; haut: number } | null;
 };
+
+const BOUTONS_FORMATAGE: { formatage: Formatage; label: string; classe: string; titre: string }[] = [
+  { formatage: 'gras', label: 'G', classe: 'font-bold', titre: 'Gras (Ctrl+B)' },
+  { formatage: 'italique', label: 'I', classe: 'italic', titre: 'Italique (Ctrl+I)' },
+  { formatage: 'lien', label: 'L', classe: 'underline', titre: 'Lien (Ctrl+K)' },
+];
 
 // Une ligne par bloc, mémoïsée : taper dans un bloc ne doit re-rendre que ce bloc, pas les autres
 // — sinon chaque frappe recalcule tout le brief, ce qui se sent dès qu'il y a plusieurs blocs.
@@ -102,19 +134,61 @@ const BriefBlockRow = memo(function BriefBlockRow({
   setIndexSelection,
   onChoisirCommande,
   onFermerMenu,
+  onSelection,
+  bulle,
 }: RowProps) {
+  const estPuce = block.type === 'li';
+
   return (
     <div className="group relative">
+      {/* Barre flottante : n'apparaît que sur une sélection réelle, ancrée au-dessus du texte
+          sélectionné plutôt que dans un coin fixe — sinon elle est perdue de vue dès que le bloc
+          fait plusieurs lignes. */}
+      {bulle && (
+        <div
+          style={{ left: bulle.gauche, top: bulle.haut }}
+          className="absolute z-30 flex -translate-x-1/2 -translate-y-full gap-0.5 rounded-md border border-line bg-surface p-0.5 shadow-card"
+        >
+          {BOUTONS_FORMATAGE.map((b) => (
+            <button
+              key={b.formatage}
+              type="button"
+              title={b.titre}
+              // mousedown + preventDefault : sans ça le textarea perd le focus ET sa sélection
+              // avant que le clic n'arrive, et le formatage n'aurait plus rien à envelopper.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onFormat(block.id, b.formatage)}
+              className={`h-6 w-6 rounded text-[11px] leading-none text-muted transition-colors duration-fast hover:bg-line/60 hover:text-fg ${b.classe}`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {estPuce && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-2 top-1 select-none text-sm leading-relaxed text-muted"
+        >
+          •
+        </span>
+      )}
+
       {/* Auto-grow en CSS pur (globals.css) : pas de scrollHeight lu en JS à chaque frappe. Plus
           aucun chrome visible autour du bloc — tout passe par « / » et les raccourcis clavier,
           comme Notion. */}
-      <div className={`grow-wrap w-full ${BLOCK_CLASS[block.type]}`} data-replicated-value={block.text}>
+      <div
+        className={`grow-wrap w-full ${BLOCK_CLASS[block.type]} ${estPuce ? 'pl-5' : ''}`}
+        data-replicated-value={block.text}
+      >
         <textarea
           ref={refSetter}
           value={block.text}
           rows={1}
           placeholder={PLACEHOLDER[block.type]}
           onChange={(e) => onText(block.id, e.target.value)}
+          onSelect={() => onSelection(block.id)}
           onBlur={onBlur}
           onKeyDown={(e) => {
             // Le menu ne capture les touches que s'il a réellement des résultats à proposer —
@@ -224,6 +298,8 @@ export function BriefEditor({
   const [pending, startTransition] = useTransition();
   const [menuId, setMenuId] = useState<string | null>(null);
   const [indexSelection, setIndexSelection] = useState(0);
+  // Position de la barre flottante, en coordonnées relatives à la ligne du bloc concerné.
+  const [bulle, setBulle] = useState<{ id: string; gauche: number; haut: number } | null>(null);
   const focusId = useRef<{ id: string; debut?: number; fin?: number } | null>(null);
   const refs = useRef(new Map<string, HTMLTextAreaElement>());
   // Bloc dont le menu « / » a été fermé à la main : sans ça, Échap serait sans effet, la frappe
@@ -283,7 +359,27 @@ export function BriefEditor({
   const handleBlur = useCallback(() => {
     persist(blocksRef.current);
     setMenuId(null);
+    setBulle(null);
   }, [persist]);
+
+  /**
+   * Affiche la barre flottante dès qu'une portion de texte est sélectionnée, ancrée au milieu de
+   * la sélection. `onSelect` couvre la souris comme le clavier (Maj+flèches), là où un `mouseup`
+   * seul raterait la sélection au clavier.
+   */
+  const handleSelection = useCallback((id: string) => {
+    const el = refs.current.get(id);
+    if (!el) return;
+    const { selectionStart, selectionEnd } = el;
+    if (selectionStart === selectionEnd) {
+      setBulle((b) => (b ? null : b));
+      return;
+    }
+    const p = positionCaret(el, Math.floor((selectionStart + selectionEnd) / 2));
+    // offsetLeft/Top ramènent la mesure — faite dans le repère du textarea — dans celui de la
+    // ligne du bloc, seul élément positionné du sous-arbre.
+    setBulle({ id, gauche: el.offsetLeft + p.gauche, haut: el.offsetTop + p.haut - 6 });
+  }, []);
 
   // Le raccourci « # »/« ## »/« ### » + espace convertit le bloc en titre et vide le texte, comme
   // Notion. Détecté ici plutôt que dans un onKeyDown séparé : c'est la forme finale du texte après
@@ -291,8 +387,12 @@ export function BriefEditor({
   const handleText = useCallback(
     (id: string, text: string) => {
       const raccourciTitre = /^(#{1,3}) $/.exec(text);
-      if (raccourciTitre) {
-        const type = `h${raccourciTitre[1].length}` as BriefBlockType;
+      // « - » ou « * » suivi d'une espace démarre une liste, comme les « # » démarrent un titre.
+      const raccourciPuce = /^[-*] $/.test(text);
+      if (raccourciTitre || raccourciPuce) {
+        const type = raccourciTitre
+          ? (`h${raccourciTitre[1].length}` as BriefBlockType)
+          : ('li' as BriefBlockType);
         appliquer(
           blocksRef.current.map((b) => (b.id === id ? { ...b, type, text: '' } : b)),
           true
@@ -316,7 +416,21 @@ export function BriefEditor({
     (id: string) => {
       const bs = blocksRef.current;
       const i = bs.findIndex((b) => b.id === id);
-      const created = newBlock(bs[i]?.type.startsWith('h') ? 'p2' : bs[i]?.type);
+      const courant = bs[i];
+
+      // Entrée sur une puce vide sort de la liste au lieu d'en empiler une de plus — c'est la
+      // seule façon de terminer une énumération sans passer par le menu.
+      if (courant?.type === 'li' && courant.text === '') {
+        focusId.current = { id };
+        appliquer(
+          bs.map((b) => (b.id === id ? { ...b, type: 'p2' as BriefBlockType } : b)),
+          true
+        );
+        return;
+      }
+
+      // Une puce enchaîne sur une puce ; un titre retombe sur du texte.
+      const created = newBlock(courant?.type.startsWith('h') ? 'p2' : courant?.type);
       focusId.current = { id: created.id };
       appliquer([...bs.slice(0, i + 1), created, ...bs.slice(i + 1)]);
     },
@@ -455,6 +569,8 @@ export function BriefEditor({
               setIndexSelection={setIndexSelection}
               onChoisirCommande={handleChoisirCommande}
               onFermerMenu={handleFermerMenu}
+              onSelection={handleSelection}
+              bulle={bulle && bulle.id === block.id ? { gauche: bulle.gauche, haut: bulle.haut } : null}
             />
           );
         })}

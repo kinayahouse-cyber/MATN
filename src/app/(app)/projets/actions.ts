@@ -584,7 +584,7 @@ export async function addNote(formData: FormData) {
 
 // Brief rédigé en blocs typés. Le contenu est validé/normalisé ici plutôt que d'écrire tel quel
 // ce que le client envoie : seuls les types de bloc connus sont acceptés.
-const BRIEF_BLOCK_TYPES = ['h1', 'h2', 'h3', 'p1', 'p2', 'p3'] as const;
+const BRIEF_BLOCK_TYPES = ['h1', 'h2', 'h3', 'p1', 'p2', 'p3', 'li'] as const;
 export type BriefBlockType = (typeof BRIEF_BLOCK_TYPES)[number];
 export type BriefBlock = { id: string; type: BriefBlockType; text: string };
 
