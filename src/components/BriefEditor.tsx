@@ -35,7 +35,7 @@ const newBlock = (type: BriefBlockType = 'p2'): BriefBlock => ({
 
 // Rendu statique du brief — Collaborateur et portail client le lisent sans pouvoir l'éditer.
 // Composant serveur possible (aucune interactivité), volontairement séparé de BriefEditor plutôt
-// que masqué en CSS : évite d'envoyer tout le JS de l'éditeur (drag, refs, actions serveur) à un
+// que masqué en CSS : évite d'envoyer tout le JS de l'éditeur (refs, actions serveur) à un
 // lecteur qui n'en a pas l'usage.
 export function BriefReadOnly({ blocks }: { blocks: BriefBlock[] }) {
   if (blocks.length === 0) return <p className="text-sm text-muted">Aucun brief.</p>;
@@ -65,7 +65,7 @@ const COMMANDES: Commande[] = [
 // Référence stable pour les blocs sans menu ouvert : un `[]` littéral recréé à chaque rendu casse
 // le memo() de BriefBlockRow pour TOUS les blocs à chaque frappe dans N'IMPORTE LEQUEL d'entre eux
 // (nouvelle référence de prop à chaque fois), ce qui re-rend tout le brief à chaque caractère tapé
-// au lieu du seul bloc concerné. Une constante partagée évite cette casse de mémoïsation.
+// au lieu du seul bloc concerné.
 const AUCUNE_COMMANDE: Commande[] = [];
 
 type RowProps = {
@@ -81,7 +81,7 @@ type RowProps = {
   indexSelection: number;
   setIndexSelection: (maj: (i: number) => number) => void;
   onChoisirCommande: (id: string, type: BriefBlockType) => void;
-  onFermerMenu: () => void;
+  onFermerMenu: (id: string) => void;
 };
 
 // Une ligne par bloc, mémoïsée : taper dans un bloc ne doit re-rendre que ce bloc, pas les autres
@@ -117,8 +117,10 @@ const BriefBlockRow = memo(function BriefBlockRow({
           onChange={(e) => onText(block.id, e.target.value)}
           onBlur={onBlur}
           onKeyDown={(e) => {
+            // Le menu ne capture les touches que s'il a réellement des résultats à proposer —
+            // sinon « /nimportequoi » suivi d'Entrée resterait bloqué sans créer de bloc.
             if (menuOuvert) {
-              const total = Math.max(commandesFiltrees.length, 1);
+              const total = commandesFiltrees.length;
               if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 setIndexSelection((i) => (i + 1) % total);
@@ -131,13 +133,13 @@ const BriefBlockRow = memo(function BriefBlockRow({
               }
               if (e.key === 'Enter') {
                 e.preventDefault();
-                const commande = commandesFiltrees[indexSelection];
+                const commande = commandesFiltrees[indexSelection] ?? commandesFiltrees[0];
                 if (commande) onChoisirCommande(block.id, commande.type);
                 return;
               }
               if (e.key === 'Escape') {
                 e.preventDefault();
-                onFermerMenu();
+                onFermerMenu(block.id);
                 return;
               }
             }
@@ -173,32 +175,28 @@ const BriefBlockRow = memo(function BriefBlockRow({
 
       {menuOuvert && (
         <div className="absolute left-2 top-full z-20 mt-1 w-64 overflow-hidden rounded-lg border border-line bg-surface shadow-card">
-          {commandesFiltrees.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-muted">Aucun résultat.</p>
-          ) : (
-            commandesFiltrees.map((c, i) => (
-              <button
-                key={c.type}
-                type="button"
-                // mousedown plutôt que click : sans preventDefault, le textarea perd le focus avant
-                // que le clic n'atteigne ce bouton, et onBlur ferme le menu avant la sélection.
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => onChoisirCommande(block.id, c.type)}
-                onMouseEnter={() => setIndexSelection(() => i)}
-                className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors duration-fast ${
-                  i === indexSelection ? 'bg-line/60 text-fg' : 'text-muted hover:bg-line/30'
-                }`}
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-line bg-bg font-display text-[10px] text-fg">
-                  {c.apercu}
-                </span>
-                <span>
-                  <span className="block text-fg">{c.label}</span>
-                  <span className="block text-[10px] text-muted">{c.description}</span>
-                </span>
-              </button>
-            ))
-          )}
+          {commandesFiltrees.map((c, i) => (
+            <button
+              key={c.type}
+              type="button"
+              // mousedown plutôt que click : sans preventDefault, le textarea perd le focus avant
+              // que le clic n'atteigne ce bouton, et onBlur ferme le menu avant la sélection.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onChoisirCommande(block.id, c.type)}
+              onMouseEnter={() => setIndexSelection(() => i)}
+              className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors duration-fast ${
+                i === indexSelection ? 'bg-line/60 text-fg' : 'text-muted hover:bg-line/30'
+              }`}
+            >
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-line bg-bg font-display text-[10px] text-fg">
+                {c.apercu}
+              </span>
+              <span>
+                <span className="block text-fg">{c.label}</span>
+                <span className="block text-[10px] text-muted">{c.description}</span>
+              </span>
+            </button>
+          ))}
         </div>
       )}
     </div>
@@ -228,9 +226,11 @@ export function BriefEditor({
   const [indexSelection, setIndexSelection] = useState(0);
   const focusId = useRef<{ id: string; debut?: number; fin?: number } | null>(null);
   const refs = useRef(new Map<string, HTMLTextAreaElement>());
-  // Miroir synchrone de `blocks`, lu par les callbacks stables (persist au blur) pour éviter
-  // qu'elles n'aient `blocks` en dépendance — ça casserait la mémoïsation des lignes à chaque
-  // frappe alors que seul le blur a besoin de la valeur la plus récente.
+  // Bloc dont le menu « / » a été fermé à la main : sans ça, Échap serait sans effet, la frappe
+  // suivante rouvrant aussitôt le menu puisque le texte commence toujours par « / ».
+  const menuAnnule = useRef<string | null>(null);
+  // Miroir synchrone de `blocks`, lu par les gestionnaires d'événements pour calculer l'état
+  // suivant sans dépendre de `blocks` — ça casserait la mémoïsation des lignes à chaque frappe.
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
 
@@ -260,10 +260,28 @@ export function BriefEditor({
     [projetId]
   );
 
+  /**
+   * Point de passage unique pour toute modification des blocs.
+   *
+   * `persist` ne doit JAMAIS être appelé depuis l'intérieur d'un `setBlocks(bs => …)` : React
+   * exécute ces fonctions pendant la phase de rendu, où déclencher une transition et la navigation
+   * du routeur (revalidatePath) est interdit — React émet « Cannot call startTransition while
+   * rendering » / « Cannot update a component while rendering a different component », et l'état
+   * du composant se corrompt : c'est ce qui empêchait les changements de type de bloc (menu « / »
+   * et raccourcis « # ») de s'appliquer. On calcule donc l'état suivant à partir du miroir
+   * synchrone, puis on met à jour et on persiste depuis le gestionnaire d'événement lui-même.
+   */
+  const appliquer = useCallback(
+    (next: BriefBlock[], persister = false) => {
+      blocksRef.current = next;
+      setBlocks(next);
+      if (persister) persist(next);
+    },
+    [persist]
+  );
+
   const handleBlur = useCallback(() => {
     persist(blocksRef.current);
-    // Laisse le temps à un clic sur une commande d'aboutir (onMouseDown y empêche déjà le blur,
-    // mais un blur déclenché autrement — Tab, clic ailleurs — doit quand même refermer le menu).
     setMenuId(null);
   }, [persist]);
 
@@ -275,45 +293,49 @@ export function BriefEditor({
       const raccourciTitre = /^(#{1,3}) $/.exec(text);
       if (raccourciTitre) {
         const type = `h${raccourciTitre[1].length}` as BriefBlockType;
-        setBlocks((bs) => {
-          const next = bs.map((b) => (b.id === id ? { ...b, type, text: '' } : b));
-          persist(next);
-          return next;
-        });
+        appliquer(
+          blocksRef.current.map((b) => (b.id === id ? { ...b, type, text: '' } : b)),
+          true
+        );
         setMenuId(null);
         return;
       }
 
-      setBlocks((bs) => bs.map((b) => (b.id === id ? { ...b, text } : b)));
-      setMenuId((atuel) => (text.startsWith('/') ? id : atuel === id ? null : atuel));
-      setIndexSelection(0);
+      appliquer(blocksRef.current.map((b) => (b.id === id ? { ...b, text } : b)));
+
+      const veutMenu = text.startsWith('/');
+      if (!veutMenu) menuAnnule.current = null;
+      const ouvre = veutMenu && menuAnnule.current !== id;
+      setMenuId(ouvre ? id : null);
+      if (ouvre) setIndexSelection(0);
     },
-    [persist]
+    [appliquer]
   );
 
   const handleEnter = useCallback(
-    (id: string) =>
-      setBlocks((bs) => {
-        const i = bs.findIndex((b) => b.id === id);
-        const created = newBlock(bs[i]?.type.startsWith('h') ? 'p2' : bs[i]?.type);
-        focusId.current = { id: created.id };
-        return [...bs.slice(0, i + 1), created, ...bs.slice(i + 1)];
-      }),
-    []
+    (id: string) => {
+      const bs = blocksRef.current;
+      const i = bs.findIndex((b) => b.id === id);
+      const created = newBlock(bs[i]?.type.startsWith('h') ? 'p2' : bs[i]?.type);
+      focusId.current = { id: created.id };
+      appliquer([...bs.slice(0, i + 1), created, ...bs.slice(i + 1)]);
+    },
+    [appliquer]
   );
 
   const handleBackspaceEmpty = useCallback(
-    (id: string) =>
-      setBlocks((bs) => {
-        if (bs.length === 1) return bs;
-        const i = bs.findIndex((b) => b.id === id);
-        const cibleId = bs[i - 1]?.id ?? bs[i + 1]?.id ?? null;
-        focusId.current = cibleId ? { id: cibleId } : null;
-        const next = bs.filter((b) => b.id !== id);
-        persist(next);
-        return next;
-      }),
-    [persist]
+    (id: string) => {
+      const bs = blocksRef.current;
+      if (bs.length === 1) return;
+      const i = bs.findIndex((b) => b.id === id);
+      const cibleId = bs[i - 1]?.id ?? bs[i + 1]?.id ?? null;
+      focusId.current = cibleId ? { id: cibleId } : null;
+      appliquer(
+        bs.filter((b) => b.id !== id),
+        true
+      );
+    },
+    [appliquer]
   );
 
   // Enveloppe la sélection courante (ou insère un mot-clé si rien n'est sélectionné) avec la
@@ -345,30 +367,32 @@ export function BriefEditor({
       }
 
       const texte = value.slice(0, selectionStart) + inserted + value.slice(selectionEnd);
-      setBlocks((bs) => {
-        const next = bs.map((b) => (b.id === id ? { ...b, text: texte } : b));
-        persist(next);
-        return next;
-      });
       focusId.current = { id, debut, fin };
+      appliquer(
+        blocksRef.current.map((b) => (b.id === id ? { ...b, text: texte } : b)),
+        true
+      );
     },
-    [persist]
+    [appliquer]
   );
 
   const handleChoisirCommande = useCallback(
     (id: string, type: BriefBlockType) => {
-      setBlocks((bs) => {
-        const next = bs.map((b) => (b.id === id ? { ...b, type, text: '' } : b));
-        persist(next);
-        return next;
-      });
-      setMenuId(null);
       focusId.current = { id };
+      setMenuId(null);
+      menuAnnule.current = null;
+      appliquer(
+        blocksRef.current.map((b) => (b.id === id ? { ...b, type, text: '' } : b)),
+        true
+      );
     },
-    [persist]
+    [appliquer]
   );
 
-  const handleFermerMenu = useCallback(() => setMenuId(null), []);
+  const handleFermerMenu = useCallback((id: string) => {
+    menuAnnule.current = id;
+    setMenuId(null);
+  }, []);
 
   // Un ref-setter stable par bloc : recréer la fonction à chaque rendu forcerait React à détacher
   // puis rattacher le ref sur chaque textarea à chaque frappe.
@@ -385,14 +409,23 @@ export function BriefEditor({
     return fn;
   }, []);
 
+  const ajouterBloc = useCallback(() => {
+    const created = newBlock();
+    focusId.current = { id: created.id };
+    appliquer([...blocksRef.current, created]);
+  }, [appliquer]);
+
   return (
     <div className={pending ? 'opacity-70' : ''}>
       <div className="space-y-1">
         {blocks.map((block) => {
-          const ouvert = menuId === block.id;
-          const commandesFiltrees = ouvert
+          const cible = menuId === block.id;
+          const commandesFiltrees = cible
             ? COMMANDES.filter((c) => c.label.toLowerCase().includes(block.text.slice(1).toLowerCase()))
             : AUCUNE_COMMANDE;
+          // Un menu sans résultat n'est pas « ouvert » : il ne s'affiche pas et ne capture ni
+          // Entrée ni les flèches, pour ne pas bloquer la rédaction sur « /texte quelconque ».
+          const ouvert = cible && commandesFiltrees.length > 0;
 
           return (
             <BriefBlockRow
@@ -405,7 +438,7 @@ export function BriefEditor({
               onBlur={handleBlur}
               onFormat={handleFormat}
               menuOuvert={ouvert}
-              commandesFiltrees={commandesFiltrees}
+              commandesFiltrees={ouvert ? commandesFiltrees : AUCUNE_COMMANDE}
               // Idem pour indexSelection : figée à 0 pour les blocs fermés (pour qui elle n'a de
               // toute façon aucun sens) plutôt que de propager la vraie valeur, qui change à
               // chaque flèche pressée dans le menu d'un AUTRE bloc.
@@ -420,7 +453,7 @@ export function BriefEditor({
 
       <button
         type="button"
-        onClick={() => setBlocks((bs) => [...bs, newBlock()])}
+        onClick={ajouterBloc}
         className="mt-2 rounded-md px-2 py-1 text-xs text-muted transition-colors duration-fast hover:bg-line/40 hover:text-fg"
       >
         + Ajouter un bloc
