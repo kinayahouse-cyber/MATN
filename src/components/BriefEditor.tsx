@@ -409,10 +409,19 @@ export function BriefEditor({
     return fn;
   }, []);
 
-  const ajouterBloc = useCallback(() => {
+  // Cliquer dans le vide sous le dernier bloc y place le curseur — et crée un bloc à la volée si
+  // le dernier est déjà rempli. C'est ce qui remplace le bouton « + Ajouter un bloc » : un bloc
+  // naît de l'écriture, jamais d'une action explicite, comme dans Notion.
+  const continuerEcriture = useCallback(() => {
+    const bs = blocksRef.current;
+    const dernier = bs[bs.length - 1];
+    if (dernier && dernier.text === '') {
+      refs.current.get(dernier.id)?.focus();
+      return;
+    }
     const created = newBlock();
     focusId.current = { id: created.id };
-    appliquer([...blocksRef.current, created]);
+    appliquer([...bs, created]);
   }, [appliquer]);
 
   return (
@@ -451,13 +460,13 @@ export function BriefEditor({
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={ajouterBloc}
-        className="mt-2 rounded-md px-2 py-1 text-xs text-muted transition-colors duration-fast hover:bg-line/40 hover:text-fg"
-      >
-        + Ajouter un bloc
-      </button>
+      {/* Zone de continuation : surface cliquable sous le dernier bloc, sans libellé ni bouton.
+          Elle donne aussi au brief une respiration en bas, comme une vraie page d'écriture. */}
+      <div
+        onClick={continuerEcriture}
+        className="min-h-20 w-full cursor-text"
+        aria-label="Continuer à écrire"
+      />
     </div>
   );
 }
